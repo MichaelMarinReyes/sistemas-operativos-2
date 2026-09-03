@@ -5,3 +5,4 @@ En cada carpeta que aparecerá contendrá las prácticas por separado, adentro e
 ## Índice de Prácticas
 
 * [Práctica 1: FCFS y SJF](./Práctica_1/) - Planificación
+* [Práctica 2: Tuberías (Pipe)](./Práctica_2/) - Tuberías
