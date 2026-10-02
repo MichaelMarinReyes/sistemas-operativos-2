@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+*.tsbuildinfo
+.idea/
+PLAN_DE_TRABAJO.md
+Proyecto Final.pdf
+/docs
+README.md
