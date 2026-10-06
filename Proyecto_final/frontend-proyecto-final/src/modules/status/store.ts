@@ -3,6 +3,9 @@ import { defineStore } from 'pinia'
 import { request, errorMessage, apiBaseUrl } from '../../shared/api/http'
 import type { StatusResponse } from './types'
 
+/** Versión del contrato que esta interfaz entiende; si cambia, hay que actualizar la aplicación. */
+const supportedContractVersion = 5
+
 export const useStatusStore = defineStore('status', () => {
   const status = ref<StatusResponse | null>(null)
   const loading = ref(false)
@@ -12,7 +15,6 @@ export const useStatusStore = defineStore('status', () => {
   let source: EventSource | null = null
   let requestVersion = 0
 
-  /** Una secuencia anterior nunca debe sobrescribir una instantánea más reciente. */
   function accept(snapshot: StatusResponse) {
     if (status.value?.runId === snapshot.runId && status.value.sequence >= snapshot.sequence) return
     status.value = snapshot
@@ -42,7 +44,7 @@ export const useStatusStore = defineStore('status', () => {
       if (source !== current) return
       try {
         const snapshot = JSON.parse((event as MessageEvent<string>).data) as StatusResponse
-        if (snapshot.contractVersion !== 3 || !snapshot.runId || !Number.isFinite(snapshot.sequence)) {
+        if (snapshot.contractVersion !== supportedContractVersion || !snapshot.runId || !Number.isFinite(snapshot.sequence)) {
           streamError.value = 'El formato de las actualizaciones no es compatible. Actualiza la aplicación.'
           return
         }

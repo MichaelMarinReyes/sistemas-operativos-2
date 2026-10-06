@@ -5,24 +5,43 @@ import CustomerForm from './modules/customers/components/CustomerForm.vue'
 import OrderForm from './modules/orders/components/OrderForm.vue'
 import OrderList from './modules/orders/components/OrderList.vue'
 import StatusDashboard from './modules/status/components/StatusDashboard.vue'
+import InventoryTable from './modules/inventory/components/InventoryTable.vue'
+import WarehouseMap from './modules/inventory/components/WarehouseMap.vue'
+import ReceiptPanel from './modules/receipts/components/ReceiptPanel.vue'
 import { useCustomersStore } from './modules/customers/store'
 import { useCatalogStore } from './modules/catalog/store'
+import { useInventoryStore } from './modules/inventory/store'
 import { useOrdersStore } from './modules/orders/store'
 import { useStatusStore } from './modules/status/store'
 
 const customers = useCustomersStore()
 const catalog = useCatalogStore()
+const inventory = useInventoryStore()
 const orders = useOrdersStore()
 const status = useStatusStore()
-const loading = computed(() => customers.loading || catalog.loading || orders.loading || status.loading)
+const loading = computed(() => customers.loading || catalog.loading || orders.loading
+  || status.loading || inventory.loading)
 
 async function refreshAll() {
-  await Promise.all([customers.load(), catalog.load(), orders.load(), status.refresh()])
+  await Promise.all([customers.load(), catalog.load(), orders.load(), status.refresh(), inventory.load()])
 }
 
 async function onOrderCreated() {
-  await Promise.all([orders.load(), status.refresh()])
+  await Promise.all([orders.load(), status.refresh(), inventory.load()])
 }
+
+/**
+ * El detalle del inventario solo se vuelve a consultar cuando su revisión cambia.
+ *
+ * La instantánea del canal en vivo trae la revisión del inventario, así que compararla evita
+ * descargar el detalle completo cada 300 milisegundos sin perder nada: si no cambió, lo que ya se
+ * tiene sigue siendo exacto.
+ */
+watch(() => [status.status?.runId, status.status?.inventory.inventoryRevision] as const, ([runId, revision], previous) => {
+  if (runId && revision !== undefined && (runId !== previous?.[0] || revision !== previous?.[1])) {
+    void inventory.load()
+  }
+})
 
 watch(() => [status.status?.runId, status.status?.ordersRevision] as const, ([runId, revision], previous) => {
   if (runId && revision !== undefined && (runId !== previous?.[0] || revision !== previous?.[1])) {
@@ -57,7 +76,10 @@ onBeforeUnmount(() => status.disconnect())
         <OrderForm @created="onOrderCreated" />
       </div>
       <OrderList />
-      <footer>Día 3 · Motor concurrente y actualizaciones en vivo · Los datos se conservan mientras el servidor permanezca en ejecución.</footer>
+      <ReceiptPanel />
+      <InventoryTable />
+      <WarehouseMap />
+      <footer>Día 5 · Recepción coordinada, inventario y despacho · Los datos se conservan mientras el servidor permanezca en ejecución.</footer>
     </main>
   </div>
 </template>

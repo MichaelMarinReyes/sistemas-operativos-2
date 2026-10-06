@@ -47,7 +47,8 @@ class StatusEventApiTests {
 
         // La instantánea inicial es completa: el cliente no depende del historial que tenía antes.
         Event first = events.get(0);
-        assertThat(((Number) first.field("$.contractVersion")).intValue()).isEqualTo(3);
+        assertThat(((Number) first.field("$.contractVersion")).intValue()).isEqualTo(5);
+        assertThat((List<?>) first.field("$.receipts.items")).isNotNull();
         assertThat((String) first.field("$.runId")).isNotBlank();
         assertThat(((Number) first.field("$.sequence")).intValue()).isPositive();
         assertThat((String) first.field("$.generatedAt")).isNotBlank();
@@ -55,6 +56,11 @@ class StatusEventApiTests {
         assertThat((List<?>) first.field("$.resourceRequests")).isNotNull();
         assertThat((List<?>) first.field("$.activeOrders")).isNotNull();
         assertThat((List<?>) first.field("$.waitingOrders")).isNotNull();
+        // El resumen de inventario viaja en cada instantánea, así el tablero se actualiza solo.
+        assertThat(((Number) first.field("$.inventory.stock")).intValue()).isPositive();
+        assertThat(((Number) first.field("$.inventory.inventoryRevision")).longValue()).isPositive();
+        assertThat(((Number) first.field("$.warehouse.locations")).intValue()).isEqualTo(100);
+        assertThat(((Number) first.field("$.warehouse.occupiedVolume")).intValue()).isPositive();
 
         long previous = 0;
         for (Event event : events) {

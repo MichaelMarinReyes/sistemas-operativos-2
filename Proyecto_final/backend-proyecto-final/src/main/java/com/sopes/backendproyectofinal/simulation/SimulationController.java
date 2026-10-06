@@ -7,15 +7,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/simulation")
 public class SimulationController {
-    private final SimulationEngine engine;
+    private final SimulationCoordinator coordinator;
 
-    public SimulationController(SimulationEngine engine) { this.engine = engine; }
+    public SimulationController(SimulationCoordinator coordinator) { this.coordinator = coordinator; }
 
     @PostMapping("/start")
-    public EngineResponse start() { return new EngineResponse(engine.start()); }
+    public EngineResponse start() { return new EngineResponse(coordinator.start()); }
 
     @PostMapping("/stop")
-    public EngineResponse stop() { return new EngineResponse(engine.stop()); }
+    public EngineResponse stop() { return new EngineResponse(coordinator.stop()); }
 
     public record EngineResponse(SimulationEngine.EngineStatus status) {}
 }

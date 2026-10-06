@@ -58,7 +58,36 @@ button:disabled, fieldset:disabled button { opacity: .6; cursor: not-allowed; }
 .order-progress { margin: 14px 0; }
 .order-progress progress { width: 100%; height: 16px; accent-color: #126658; margin-top: 8px; }
 .waiting-orders li { padding: 6px 0; overflow-wrap: anywhere; }
+/* Tablas de inventario y almacén. El desplazamiento horizontal evita que una columna se aplaste
+   en pantallas estrechas, y la cabecera fija permite recorrer cien filas sin perder la referencia. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.table-scroll { overflow-x: auto; margin-top: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 11px 10px; text-align: right; border-bottom: 1px solid #e7edef; white-space: nowrap; }
+thead th { position: sticky; top: 0; background: white; color: #526979; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; border-bottom: 2px solid #dce5ea; }
+tbody th[scope="row"] { text-align: left; font-weight: 600; white-space: normal; }
+tbody th[scope="row"] small { display: block; font-weight: 400; }
+tbody tr.selected { background: #eef7f4; }
+td.scarce { color: #a8421f; font-weight: 700; }
+td.attention, .stats article.attention strong { color: #855b08; }
+.inventory-panel, .receipt-panel { margin-bottom: 30px; }
+.inventory-panel .stats { grid-template-columns: repeat(4, 1fr); }
+/* Mapa del almacén: cada casilla es una ubicación y su relleno es el volumen ocupado. */
+.warehouse-map { display: flex; flex-wrap: wrap; gap: 14px; margin: 18px 0; }
+.aisle { background: #f7fafb; border: 1px solid #dce5ea; border-radius: 10px; padding: 10px; }
+.aisle-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #526979; margin-bottom: 8px; text-align: center; }
+.shelf { display: flex; gap: 6px; margin-bottom: 6px; }
+.shelf:last-child { margin-bottom: 0; }
+.cell { position: relative; width: 34px; height: 34px; border-radius: 6px; border: 1px solid #b9cbd6; background: linear-gradient(to top, #126658 var(--fill), #eef4f6 var(--fill)); overflow: hidden; }
+.cell.empty { background: #f4f7f8; border-style: dashed; }
+.cell-id { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #102b3f; }
+.legend { display: flex; align-items: center; gap: 10px; }
+.swatch { width: 26px; height: 14px; border-radius: 3px; border: 1px solid #b9cbd6; background: linear-gradient(to top, #126658 65%, #eef4f6 65%); }
+.lot-detail { margin-top: 18px; background: #f7fafb; }
+.lot-detail h4 { margin: 0 0 8px; }
+.lot-locations { columns: 3 220px; list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.lot-locations li { padding: 5px 0; border-top: 1px solid #e7edef; }
 @media (max-width: 1000px) { .forms-grid { grid-template-columns: 1fr; } }
 @media (max-width: 480px) { .order-line { grid-template-columns: minmax(0, 1fr) 85px; } .remove-line { grid-column: 1 / -1; } }
-@media (max-width: 760px) { .stats, .resources { grid-template-columns: repeat(2, 1fr); } .bottom-grid { grid-template-columns: 1fr; } .heading { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 480px) { .stats, .resources { grid-template-columns: 1fr; } .header-label { max-width: 155px; text-align: right; } main { padding: 24px 16px; } }
+@media (max-width: 760px) { .stats, .resources, .inventory-panel .stats { grid-template-columns: repeat(2, 1fr); } .bottom-grid { grid-template-columns: 1fr; } .heading { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 480px) { .stats, .resources, .inventory-panel .stats { grid-template-columns: 1fr; } .header-label { max-width: 155px; text-align: right; } main { padding: 24px 16px; } }

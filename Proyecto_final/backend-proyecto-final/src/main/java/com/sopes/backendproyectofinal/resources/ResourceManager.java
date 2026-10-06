@@ -123,5 +123,5 @@ public class ResourceManager {
 
     public record ResourceInstance(String id, String ownerId, Instant acquiredAt) {}
     public record ResourceSummary(ResourceType type, String name, int capacity, int inUse, List<ResourceInstance> instances) {}
-    public record ResourceRequest(String orderId, Map<ResourceType, Integer> required) {}
+    public record ResourceRequest(String operationId, Map<ResourceType, Integer> required) {}
 }

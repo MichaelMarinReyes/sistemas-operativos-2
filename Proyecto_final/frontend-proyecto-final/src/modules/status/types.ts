@@ -1,4 +1,5 @@
 import type { Order } from '../orders/types'
+import type { ReceiptReport } from '../receipts/types'
 
 export type SimulationStatus = 'NOT_STARTED' | 'RUNNING' | 'STOPPING' | 'STOPPED'
 export type ResourceType = 'WORKER' | 'FORKLIFT' | 'PACKING' | 'QUALITY' | 'SCANNER' | 'LOADING'
@@ -17,8 +18,16 @@ export interface StatusResponse {
     type: ResourceType; name: string; capacity: number; inUse: number
     instances: { id: string; ownerId: string | null; acquiredAt: string | null }[]
   }[]
-  resourceRequests: { orderId: string; required: Partial<Record<ResourceType, number>> }[]
-  warehouse: { locations: number; volumePerLocation: number; occupiedVolume: number }
+  resourceRequests: { operationId: string; required: Partial<Record<ResourceType, number>> }[]
+  receipts: ReceiptReport
+  warehouse: { locations: number; volumePerLocation: number; occupiedVolume: number; availableVolume: number }
+  /**
+   * Resumen de existencias que viaja en cada instantánea. La revisión permite detectar que el
+   * inventario cambió entre eventos, que es lo que dispara la consulta del detalle.
+   */
+  inventory: {
+    inventoryRevision: number; stock: number; reserved: number; pendingPlacement: number; available: number
+  }
   orders: { waiting: number; processing: number; completed: number; failed: number }
   ordersRevision: number
   activeOrders: Order[]

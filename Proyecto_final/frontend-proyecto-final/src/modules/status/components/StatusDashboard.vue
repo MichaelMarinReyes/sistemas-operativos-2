@@ -40,7 +40,7 @@ const connectionLabels = { DISCONNECTED: 'Sin conexión en tiempo real', CONNECT
           <ul class="resource-instances">
             <li v-for="(instance, index) in resource.instances" :key="instance.id" :class="{ occupied: instance.ownerId }">
               <span>{{ resourceLabels[resource.type] }} {{ index + 1 }}</span>
-              <span v-if="instance.ownerId" :title="instance.ownerId">Pedido {{ instance.ownerId.slice(0, 8) }}…
+              <span v-if="instance.ownerId" :title="instance.ownerId">{{ instance.ownerId.startsWith('RCV-') ? 'Recepción' : 'Pedido' }} {{ instance.ownerId.slice(0, 8) }}…
                 <small>Desde {{ new Date(instance.acquiredAt!).toLocaleTimeString('es-GT') }}</small>
               </span>
               <span v-else>Disponible</span>
@@ -56,21 +56,35 @@ const connectionLabels = { DISCONNECTED: 'Sin conexión en tiempo real', CONNECT
         <div class="section-heading"><h3>{{ order.customerName }} · {{ serviceLevelLabel(order.serviceLevel) }}</h3><span class="badge">{{ orderStatusLabels[order.status] }}</span></div>
         <p class="order-id">Pedido {{ order.id }}</p>
         <OrderProgress :order="order" />
-        <p v-for="entry in store.status.resourceRequests.filter(entry => entry.orderId === order.id)" :key="entry.orderId" class="muted">
+        <p v-for="entry in store.status.resourceRequests.filter(entry => entry.operationId === order.id)" :key="entry.operationId" class="muted">
           Esperando: {{ Object.entries(entry.required).map(([type, count]) => `${count} ${resourceLabels[type as ResourceType]}`).join(', ') }}.
         </p>
       </article>
     </section>
     <section class="panel waiting-orders" aria-labelledby="waiting-heading">
       <h2 id="waiting-heading">Pendientes de selección</h2>
-      <p class="muted">Prioridad estricta por nivel; desempate por llegada. Se muestran hasta 50 pedidos. Los trabajadores ya asignados compiten por recursos sin expropiación.</p>
+      <p class="muted">Prioridad estricta por nivel; desempate por llegada. Solo entra un pedido al que le alcanzan las existencias de todas sus líneas, así que un pedido sin mercancía no ocupa a ningún trabajador. Se muestran hasta 50 pedidos. Los trabajadores ya asignados compiten por recursos sin expropiación.</p>
       <p v-if="!store.status.waitingOrders.length">No hay pedidos pendientes de selección.</p>
       <ol><li v-for="order in store.status.waitingOrders" :key="order.id">{{ order.customerName }} · {{ serviceLevelLabel(order.serviceLevel) }} · {{ order.totalUnits }} unidades <span class="order-id">({{ order.id }})</span></li></ol>
     </section>
     <section class="panel warehouse-panel">
-      <h2>Almacén</h2>
-      <p>{{ store.status.warehouse.locations }} ubicaciones · {{ store.status.warehouse.volumePerLocation }} unidades de volumen por ubicación</p>
-      <p class="muted">Volumen ocupado: {{ store.status.warehouse.occupiedVolume }} / {{ store.status.warehouse.locations * store.status.warehouse.volumePerLocation }}</p>
+      <h2>Resumen del almacén y las existencias</h2>
+      <p>
+        {{ store.status.warehouse.locations }} ubicaciones ·
+        {{ store.status.warehouse.volumePerLocation }} unidades de volumen por ubicación
+      </p>
+      <p class="muted">
+        Volumen ocupado {{ store.status.warehouse.occupiedVolume }} /
+        {{ store.status.warehouse.locations * store.status.warehouse.volumePerLocation }} ·
+        {{ store.status.inventory.stock }} unidades en existencias ·
+        {{ store.status.inventory.available }} libres ·
+        {{ store.status.inventory.reserved }} comprometidas con pedidos
+      </p>
+      <p v-if="store.status.inventory.pendingPlacement > 0" class="muted">
+        {{ store.status.inventory.pendingPlacement }} unidades están en el almacén pero aún sin
+        ubicación donde caban enteras; se recolocan en cuanto un pedido libera espacio.
+      </p>
+      <p class="muted">El detalle por producto y el mapa de ubicaciones están más abajo.</p>
     </section>
   </template>
 </template>
