@@ -58,12 +58,10 @@ onBeforeUnmount(() => status.disconnect())
   <div class="layout">
     <header>
       <a class="brand" href="/">RED<span>Xela</span></a>
-      <span class="header-label">Centro de distribución · Simulador</span>
     </header>
     <main>
       <section class="heading">
         <div>
-          <p class="eyebrow">SISTEMAS OPERATIVOS 2</p>
           <h1>Panel de operaciones</h1>
           <p class="muted">Clientes, pedidos y recursos del centro de distribución.</p>
         </div>
