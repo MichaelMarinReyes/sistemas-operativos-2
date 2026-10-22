@@ -77,7 +77,6 @@ onBeforeUnmount(() => status.disconnect())
       <ReceiptPanel />
       <InventoryTable />
       <WarehouseMap />
-      <footer>Día 5 · Recepción coordinada, inventario y despacho · Los datos se conservan mientras el servidor permanezca en ejecución.</footer>
     </main>
   </div>
 </template>
