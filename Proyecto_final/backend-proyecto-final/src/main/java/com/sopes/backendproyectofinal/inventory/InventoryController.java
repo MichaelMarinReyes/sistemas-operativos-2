@@ -1,14 +1,15 @@
 package com.sopes.backendproyectofinal.inventory;
 
-import java.time.Instant;
-import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.List;
+
 /**
  * Consulta de existencias y del almacén.
- *
+ * <p>
  * Solo lee. Ninguna ruta modifica inventario: las únicas entradas son el motor de pedidos y, a
  * partir del quinto día, el área de recepción. Mantener el inventario fuera del controlador es lo
  * que permite que esas rutas no rompan el aislamiento del módulo.
@@ -18,9 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class InventoryController {
     private final InventoryService inventory;
 
-    public InventoryController(InventoryService inventory) { this.inventory = inventory; }
+    public InventoryController(InventoryService inventory) {
+        this.inventory = inventory;
+    }
 
-    /** Existencias por producto con su detalle de comprometido, disponible y pendiente. */
+    /**
+     * Existencias por producto con su detalle de comprometido, disponible y pendiente.
+     */
     @GetMapping("/inventory")
     public InventoryResponse inventory() {
         InventorySnapshot snapshot = inventory.snapshot();
@@ -28,14 +33,18 @@ public class InventoryController {
                 inventory.report(snapshot), totals(snapshot));
     }
 
-    /** Capacidad, ocupación y reparto real de los lotes entre ubicaciones no contiguas. */
+    /**
+     * Capacidad, ocupación y reparto real de los lotes entre ubicaciones no contiguas.
+     */
     @GetMapping("/warehouse")
     public WarehouseResponse warehouse() {
         InventorySnapshot snapshot = inventory.snapshot();
         return new WarehouseResponse(snapshot.revision(), snapshot.generatedAt(), inventory.warehouseReport(snapshot));
     }
 
-    /** Totales del inventario, para las tarjetas de resumen. */
+    /**
+     * Totales del inventario, para las tarjetas de resumen.
+     */
     private Totals totals(InventorySnapshot snapshot) {
         return new Totals(snapshot.totalStock(), snapshot.totalReserved(),
                 snapshot.totalStock() - snapshot.totalReserved() - snapshot.totalPendingPlacement(), snapshot.totalPendingPlacement(),
@@ -43,12 +52,17 @@ public class InventoryController {
     }
 
     public record InventoryResponse(long inventoryRevision, Instant generatedAt,
-                                    List<InventoryService.InventoryReport> items, Totals totals) {}
+                                    List<InventoryService.InventoryReport> items, Totals totals) {
+    }
 
     public record WarehouseResponse(long inventoryRevision, Instant generatedAt,
-                                    InventoryService.WarehouseReport warehouse) {}
+                                    InventoryService.WarehouseReport warehouse) {
+    }
 
-    /** Existencias, comprometido, libre y pendiente, más el uso de volumen del almacén. */
+    /**
+     * Existencias, comprometido, libre y pendiente, más el uso de volumen del almacén.
+     */
     public record Totals(int stock, int reserved, int available, int pendingPlacement,
-                         int occupiedVolume, int availableVolume) {}
+                         int occupiedVolume, int availableVolume) {
+    }
 }

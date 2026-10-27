@@ -1,13 +1,13 @@
 package com.sopes.backendproyectofinal.inventory;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
-import jakarta.validation.constraints.Min;
 
 /**
  * Configuración del almacén y de la carga inicial de mercancía.
- *
+ * <p>
  * Las cantidades iniciales se pueden ajustar con propiedades con el prefijo
  * warehouse.initial-stock, por ejemplo warehouse.initial-stock.GEN-01=50.
  */
@@ -49,27 +49,47 @@ public class WarehouseSettings {
         return stock;
     }
 
-    public int locationCapacity() { return locationCapacity; }
+    public int locationCapacity() {
+        return locationCapacity;
+    }
 
-    public void setLocationCapacity(int value) { this.locationCapacity = value; }
+    public void setLocationCapacity(int value) {
+        this.locationCapacity = value;
+    }
 
-    public int aisles() { return aisles; }
+    public int aisles() {
+        return aisles;
+    }
 
-    public void setAisles(int value) { this.aisles = value; }
+    public void setAisles(int value) {
+        this.aisles = value;
+    }
 
-    public int shelvesPerAisle() { return shelvesPerAisle; }
+    public int shelvesPerAisle() {
+        return shelvesPerAisle;
+    }
 
-    public void setShelvesPerAisle(int value) { this.shelvesPerAisle = value; }
+    public void setShelvesPerAisle(int value) {
+        this.shelvesPerAisle = value;
+    }
 
-    public int levelsPerShelf() { return levelsPerShelf; }
+    public int levelsPerShelf() {
+        return levelsPerShelf;
+    }
 
-    public void setLevelsPerShelf(int value) { this.levelsPerShelf = value; }
+    public void setLevelsPerShelf(int value) {
+        this.levelsPerShelf = value;
+    }
 
-    public int locationCount() { return aisles * shelvesPerAisle * levelsPerShelf; }
+    public int locationCount() {
+        return aisles * shelvesPerAisle * levelsPerShelf;
+    }
 
     public java.util.Map<String, Integer> initialStock() {
         return java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(initialStock));
     }
 
-    public void setInitialStock(java.util.Map<String, Integer> value) { this.initialStock = value; }
+    public void setInitialStock(java.util.Map<String, Integer> value) {
+        this.initialStock = value;
+    }
 }

@@ -1,11 +1,14 @@
 package com.sopes.backendproyectofinal.orders;
 
 import com.sopes.backendproyectofinal.shared.ApiException;
-import java.time.Instant;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 
-/** Conserva una copia del nivel contratado y las líneas al registrar el pedido. */
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Conserva una copia del nivel contratado y las líneas al registrar el pedido.
+ */
 public record Order(String id, String customerId, String customerName, int serviceLevel,
                     List<OrderLine> lines, int totalUnits, OrderStatus status, Instant createdAt,
                     OrderStage stage, double progress, Double estimatedRemainingMinutes,

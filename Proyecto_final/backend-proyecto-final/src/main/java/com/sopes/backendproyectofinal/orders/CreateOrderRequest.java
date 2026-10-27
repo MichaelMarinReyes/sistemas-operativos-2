@@ -2,6 +2,7 @@ package com.sopes.backendproyectofinal.orders;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+
 import java.util.List;
 
 public record CreateOrderRequest(
@@ -14,5 +15,6 @@ public record CreateOrderRequest(
             @NotBlank(message = "Selecciona un producto.") String productId,
             @NotNull(message = "Indica la cantidad de unidades.")
             @Min(value = 1, message = "La cantidad debe ser un entero mayor que cero.")
-            @Max(value = 1000000, message = "La cantidad máxima por producto es 1000000.") Integer quantity) {}
+            @Max(value = 1000000, message = "La cantidad máxima por producto es 1000000.") Integer quantity) {
+    }
 }

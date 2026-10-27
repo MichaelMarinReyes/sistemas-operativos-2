@@ -2,7 +2,7 @@ package com.sopes.backendproyectofinal.orders;
 
 /**
  * Transiciones permitidas de un pedido.
- *
+ * <p>
  * QUEUED vuelve a WAITING_STOCK cuando el trabajador pierde la carrera de la reserva: otro pedido
  * se llevó las últimas unidades entre la comprobación de elegibilidad y la reserva efectiva.
  */

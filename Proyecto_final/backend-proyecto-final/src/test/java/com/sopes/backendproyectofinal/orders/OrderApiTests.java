@@ -17,11 +17,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/** Verifica el flujo HTTP completo y que las solicitudes inválidas no creen pedidos parciales. */
+/**
+ * Verifica el flujo HTTP completo y que las solicitudes inválidas no creen pedidos parciales.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 class OrderApiTests {
-    @Autowired private MockMvc mvc;
+    @Autowired
+    private MockMvc mvc;
 
     private String createCustomer(int level) throws Exception {
         String response = mvc.perform(post("/api/customers").contentType(MediaType.APPLICATION_JSON)

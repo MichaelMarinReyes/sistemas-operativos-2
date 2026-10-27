@@ -1,7 +1,5 @@
 package com.sopes.backendproyectofinal.inventory;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.sopes.backendproyectofinal.catalog.CatalogService;
 import com.sopes.backendproyectofinal.catalog.MerchandiseType;
 import com.sopes.backendproyectofinal.orders.Order;
@@ -9,21 +7,14 @@ import com.sopes.backendproyectofinal.orders.OrderLine;
 import com.sopes.backendproyectofinal.orders.OrderRepository;
 import com.sopes.backendproyectofinal.orders.OrderStatus;
 import com.sopes.backendproyectofinal.shared.SimulationState;
-import com.sopes.backendproyectofinal.warehouse.Lot;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Demuestra, con pruebas, los cuatro problemas de concurrencia del día cuatro y cómo queda resuelto
@@ -32,9 +23,11 @@ import org.junit.jupiter.api.Test;
  */
 class InventoryConcurrencyTests {
 
-    /** Inventario con la carga inicial indicada y el almacén de tamaño indicado. */
+    /**
+     * Inventario con la carga inicial indicada y el almacén de tamaño indicado.
+     */
     private static InventoryService inventory(Map<String, Integer> stock, int aisles,
-                                             int shelves, int levels) {
+                                              int shelves, int levels) {
         WarehouseSettings settings = new WarehouseSettings();
         settings.setAisles(aisles);
         settings.setShelvesPerAisle(shelves);
@@ -43,19 +36,25 @@ class InventoryConcurrencyTests {
         return new InventoryService(new CatalogService(), settings);
     }
 
-    /** Inventario estándar de 100 ubicaciones con la carga indicada. */
+    /**
+     * Inventario estándar de 100 ubicaciones con la carga indicada.
+     */
     private static InventoryService inventory(Map<String, Integer> stock) {
         return inventory(stock, 10, 5, 2);
     }
 
-    /** Pedido de un solo producto, listo para reservarse. */
+    /**
+     * Pedido de un solo producto, listo para reservarse.
+     */
     private static Order orderFor(String productId, int quantity) {
         return new Order(UUID.randomUUID().toString(), "customer", "Cliente", 3,
                 List.of(new OrderLine(productId, "Producto", MerchandiseType.GENERAL, quantity)),
                 quantity, OrderStatus.CREATED, Instant.now());
     }
 
-    /** Ejecuta la acción en varias hebras que arrancan a la vez y devuelve los resultados. */
+    /**
+     * Ejecuta la acción en varias hebras que arrancan a la vez y devuelve los resultados.
+     */
     private static <T> List<T> runConcurrently(int threads,
                                                java.util.function.IntFunction<T> action) throws Exception {
         CountDownLatch ready = new CountDownLatch(threads);
@@ -86,7 +85,7 @@ class InventoryConcurrencyTests {
 
     /**
      * Sobreventa. Dieciséis hebras piden a la vez las mismas unidades.
-     *
+     * <p>
      * Sin la comprobación y la escritura dentro de un mismo bloqueo, varias pasarían la
      * comprobación con las mismas unidades libres y el almacén prometería más de lo que tiene.
      * El invariante que se verifica es que lo comprometido nunca pasa de lo existente y que
@@ -111,7 +110,7 @@ class InventoryConcurrencyTests {
 
     /**
      * Reserva parcial. Un pedido con una línea abundante y otra imposible.
-     *
+     * <p>
      * Si el inventario reservara línea por línea, la línea posible quedaría bloqueada para siempre
      * sin que el pedido pudiera completarse. El invariante es que una reserva existe entera o no
      * existe: al fallar, no queda ninguna unidad comprometida de ninguna línea.
@@ -152,7 +151,7 @@ class InventoryConcurrencyTests {
 
     /**
      * Asignación no contigua. Un lote no vive en un tramo seguido de estantes.
-     *
+     * <p>
      * La escena se construye a propósito: se llena el almacén con mercancía grande que deja huecos
      * inutilizables, de forma que cuando llega el último producto solo caben sus unidades en
      * posiciones separadas. Se comprueba de manera objetiva: se convierte cada identificador de
@@ -180,7 +179,9 @@ class InventoryConcurrencyTests {
                 .isGreaterThan(positions.size());
     }
 
-    /** Posición física de una ubicación dentro de la estantería, contando desde la primera. */
+    /**
+     * Posición física de una ubicación dentro de la estantería, contando desde la primera.
+     */
     private static int position(String locationId, int shelvesPerAisle, int levelsPerShelf) {
         String[] parts = locationId.split("-");
         int aisle = parts[0].charAt(0) - 'A';
@@ -192,7 +193,7 @@ class InventoryConcurrencyTests {
     /**
      * Trazabilidad y recuperación. Un pedido que falla después de tomar su carga devuelve las
      * unidades a las mismas ubicaciones de las que salieron.
-     *
+     * <p>
      * Sin registro del retiro no habría forma de saber qué unidades ni de dónde salir, y el
      * inventario quedaría descuadrado de forma irreversible. El invariante es que existencias más
      * unidades retiradas se conserva, y que la recuperación es exacta e idempotente.
@@ -220,7 +221,9 @@ class InventoryConcurrencyTests {
         assertThat(distribution(inventory, "GEN-01")).isEqualTo(before);
     }
 
-    /** Distribución física de un producto: cuántas unidades hay en cada ubicación. */
+    /**
+     * Distribución física de un producto: cuántas unidades hay en cada ubicación.
+     */
     private static Map<String, Integer> distribution(InventoryService inventory, String productId) {
         return inventory.warehouseReport().lots().stream()
                 .filter(lot -> lot.productId().equals(productId))
@@ -231,7 +234,7 @@ class InventoryConcurrencyTests {
 
     /**
      * Lecturas concurrentes durante una sucesión de escrituras.
-     *
+     * <p>
      * La instantánea publicada se escribe en un campo volátil y se lee sin tomar bloqueos. Esta
      * prueba comprueba progreso de los lectores mientras un hilo modifica el inventario.
      * La ausencia de adquisición del bloqueo se verifica además en el diseño de snapshot.
@@ -262,7 +265,7 @@ class InventoryConcurrencyTests {
 
     /**
      * Interbloqueo por orden de bloqueo. Elegibilidad y reserva al mismo tiempo.
-     *
+     * <p>
      * Elegir un pedido exige saber si hay existencias, y reservar exige escribir. Si se tomaran los
      * dos bloqueos a la vez, un hilo los pediría en el orden pedidos-inventario y el servicio de
      * inventario lo haría al revés, y ambos se quedarían esperando para siempre. Aquí la

@@ -1,23 +1,24 @@
 package com.sopes.backendproyectofinal.inventory;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-
 import com.jayway.jsonpath.JsonPath;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
 /**
  * Verifica el contrato de las consultas de inventario y almacén.
- *
+ * <p>
  * Lo que se comprueba es que las rutas devuelven el estado actual ya calculado y que el almacén
  * expone el reparto real de cada lote entre ubicaciones, que es lo que hace visible que el
  * almacenamiento no exige contigüidad.
- *
+ * <p>
  * Todas las lecturas usan rutas completas sobre el mismo cuerpo, para comprobar el contrato de
  * una sola vez y no depender de cómo se serializa un objeto anidado.
  */
@@ -27,7 +28,9 @@ class InventoryApiTests {
     @Autowired
     private MockMvc mvc;
 
-    /** Cuerpo de la consulta indicada, tal y como la vería el navegador. */
+    /**
+     * Cuerpo de la consulta indicada, tal y como la vería el navegador.
+     */
     private String body(String path) throws Exception {
         return mvc.perform(get(path)).andReturn().getResponse().getContentAsString();
     }

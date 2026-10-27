@@ -1,18 +1,17 @@
 package com.sopes.backendproyectofinal.warehouse;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.sopes.backendproyectofinal.catalog.CatalogService;
 import com.sopes.backendproyectofinal.catalog.Product;
+import org.junit.jupiter.api.Test;
+
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Comprueba el algoritmo de colocación del almacén con una sola hebra.
- *
+ * <p>
  * Aquí se demuestra que la asignación es correcta por sí sola: que no excede capacidades, que
  * respeta el volumen de cada unidad y que reparte de forma determinista. Las pruebas que importan
  * para el análisis de concurrencia son las de reserva simultánea, que están en el módulo de
@@ -21,7 +20,9 @@ import org.junit.jupiter.api.Test;
 class WarehouseTests {
     private static final CatalogService CATALOG = new CatalogService();
 
-    /** Producto del catálogo por identificador, para no repetir el volumen en cada prueba. */
+    /**
+     * Producto del catálogo por identificador, para no repetir el volumen en cada prueba.
+     */
     private static Product product(String id) {
         return CATALOG.findById(id);
     }
@@ -49,7 +50,9 @@ class WarehouseTests {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** Solo se colocan unidades enteras: una ubicación con 2 libres no acepta una unidad de 3. */
+    /**
+     * Solo se colocan unidades enteras: una ubicación con 2 libres no acepta una unidad de 3.
+     */
     @Test
     void onlyStoresUnitsThatFitWhole() {
         Warehouse warehouse = new Warehouse(10, 1, 2, 1);
@@ -65,7 +68,9 @@ class WarehouseTests {
                 .doesNotThrowAnyException();
     }
 
-    /** Cuando no cabe ninguna unidad entera, el almacén queda intacto y no se pierde mercancía. */
+    /**
+     * Cuando no cabe ninguna unidad entera, el almacén queda intacto y no se pierde mercancía.
+     */
     @Test
     void keepsWarehouseUntouchedWhenNothingFits() {
         Warehouse warehouse = new Warehouse(10, 1, 1, 1);
@@ -93,7 +98,9 @@ class WarehouseTests {
         assertThat(warehouse.occupiedVolume()).isEqualTo(7);
     }
 
-    /** La misma secuencia de ingresos produce siempre la misma distribución física. */
+    /**
+     * La misma secuencia de ingresos produce siempre la misma distribución física.
+     */
     @Test
     void placementIsReproducible() {
         Warehouse first = new Warehouse(10, 10, 5, 2);
@@ -109,7 +116,9 @@ class WarehouseTests {
         assertThat(first.occupiedVolume()).isEqualTo(second.occupiedVolume());
     }
 
-    /** Retirar unidades libera el volumen exacto que ocupaban. */
+    /**
+     * Retirar unidades libera el volumen exacto que ocupaban.
+     */
     @Test
     void withdrawFreesExactlyTheUsedVolume() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);
@@ -123,7 +132,9 @@ class WarehouseTests {
         assertThat(warehouse.unitsByProduct().get("ELE-02")).containsEntry("A-1-1", 1);
     }
 
-    /** Retirar todas las unidades borra el producto de esa ubicación y libera su volumen entero. */
+    /**
+     * Retirar todas las unidades borra el producto de esa ubicación y libera su volumen entero.
+     */
     @Test
     void withdrawRemovesTheProductWhenNothingIsLeft() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);
@@ -135,7 +146,9 @@ class WarehouseTests {
         assertThat(warehouse.unitsByProduct()).isEmpty();
     }
 
-    /** Retirar más de lo que hay no inventa existencias ni deja volúmenes negativos. */
+    /**
+     * Retirar más de lo que hay no inventa existencias ni deja volúmenes negativos.
+     */
     @Test
     void withdrawNeverCreatesPhantomUnits() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);
@@ -151,7 +164,9 @@ class WarehouseTests {
         assertThat(warehouse.locationsInUse()).isZero();
     }
 
-    /** Devolver unidades a su ubicación de origen las devuelve a donde estaban. */
+    /**
+     * Devolver unidades a su ubicación de origen las devuelve a donde estaban.
+     */
     @Test
     void storeAtReturnsUnitsToTheOriginLocation() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);
@@ -167,7 +182,9 @@ class WarehouseTests {
         assertThat(warehouse.unitsAt("A-1-1", "GEN-01")).isEqualTo(10);
     }
 
-    /** El almacén rechaza una ubicación que no existe en lugar de aceptarla en silencio. */
+    /**
+     * El almacén rechaza una ubicación que no existe en lugar de aceptarla en silencio.
+     */
     @Test
     void storeAtIgnoresUnknownLocations() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);
@@ -176,7 +193,9 @@ class WarehouseTests {
         assertThat(warehouse.occupiedVolume()).isZero();
     }
 
-    /** Los lotes derivados del almacén cuadran con las existencias declaradas. */
+    /**
+     * Los lotes derivados del almacén cuadran con las existencias declaradas.
+     */
     @Test
     void derivedLotsMatchTheStoredDetail() {
         Warehouse warehouse = new Warehouse(10, 10, 5, 2);

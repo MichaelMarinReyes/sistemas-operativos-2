@@ -4,23 +4,18 @@ import com.sopes.backendproyectofinal.shared.ApiException;
 import com.sopes.backendproyectofinal.status.StatusResponse;
 import com.sopes.backendproyectofinal.status.StatusService;
 import jakarta.annotation.PreDestroy;
-import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class StatusEventService {
@@ -28,12 +23,16 @@ public class StatusEventService {
     private final StatusService status;
     private final Map<String, Client> clients = new ConcurrentHashMap<>();
     private final ScheduledExecutorService publisher = Executors.newSingleThreadScheduledExecutor(task -> {
-        Thread thread = new Thread(task, "redxela-sse-publisher"); thread.setDaemon(true); return thread;
+        Thread thread = new Thread(task, "redxela-sse-publisher");
+        thread.setDaemon(true);
+        return thread;
     });
     private final ThreadPoolExecutor senders = new ThreadPoolExecutor(0, 16, 30, TimeUnit.SECONDS,
             new SynchronousQueue<>(), task -> {
-                Thread thread = new Thread(task, "redxela-sse-sender"); thread.setDaemon(true); return thread;
-            });
+        Thread thread = new Thread(task, "redxela-sse-sender");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public StatusEventService(StatusService status) {
         this.status = status;
@@ -67,7 +66,9 @@ public class StatusEventService {
         }
     }
 
-    /** Un solo estado pendiente por cliente: un navegador lento no acumula eventos ni bloquea el motor. */
+    /**
+     * Un solo estado pendiente por cliente: un navegador lento no acumula eventos ni bloquea el motor.
+     */
     private final class Client {
         private final String id = UUID.randomUUID().toString();
         private final SseEmitter emitter = new SseEmitter(60_000L);
@@ -84,8 +85,12 @@ public class StatusEventService {
 
         private void schedule() {
             if (!draining.compareAndSet(false, true)) return;
-            try { senders.execute(this::send); }
-            catch (RejectedExecutionException exception) { draining.set(false); close(); }
+            try {
+                senders.execute(this::send);
+            } catch (RejectedExecutionException exception) {
+                draining.set(false);
+                close();
+            }
         }
 
         private void send() {
@@ -106,8 +111,15 @@ public class StatusEventService {
             }
         }
 
-        private void remove() { clients.remove(id); latest.set(null); }
-        private void close() { remove(); emitter.complete(); }
+        private void remove() {
+            clients.remove(id);
+            latest.set(null);
+        }
+
+        private void close() {
+            remove();
+            emitter.complete();
+        }
     }
 
     @PreDestroy

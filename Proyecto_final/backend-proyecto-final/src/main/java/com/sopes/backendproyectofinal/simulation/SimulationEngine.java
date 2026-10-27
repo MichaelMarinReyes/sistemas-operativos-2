@@ -1,3 +1,8 @@
+/**
+ * Motor de simulación que coordina el procesamiento concurrente de pedidos.
+ * Utiliza un pool de hilos, locks y sincronización para simular el centro de distribución.
+ */
+
 package com.sopes.backendproyectofinal.simulation;
 
 import com.sopes.backendproyectofinal.inventory.InventoryService;
@@ -11,20 +16,21 @@ import com.sopes.backendproyectofinal.resources.ResourceManager;
 import com.sopes.backendproyectofinal.shared.ApiException;
 import com.sopes.backendproyectofinal.shared.SimulationState;
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 
 /**
  * Motor que retira pedidos elegibles y los conduce hasta completarse usando recursos limitados.
- *
+ * <p>
  * El orden de las operaciones es deliberado y es la regla que evita el interbloqueo del enunciado:
  * primero se reservan las existencias, que es una operación corta con su propio bloqueo, y solo
  * después se piden los recursos operativos, que sí pueden tardar. En ningún momento se espera por un
@@ -57,7 +63,9 @@ public class SimulationEngine {
         this.state = state;
     }
 
-    /** Un único grupo de trabajadores por motor, aunque varias pestañas soliciten iniciar. */
+    /**
+     * Un único grupo de trabajadores por motor, aunque varias pestañas soliciten iniciar.
+     */
     public synchronized EngineStatus start() {
         if (status == EngineStatus.RUNNING) {
             return status;
@@ -81,7 +89,9 @@ public class SimulationEngine {
         }
     }
 
-    /** Interrumpe los pedidos activos y conserva los que todavía no se retiraron de la cola. */
+    /**
+     * Interrumpe los pedidos activos y conserva los que todavía no se retiraron de la cola.
+     */
     public synchronized EngineStatus stop() {
         if (workers == null || status == EngineStatus.STOPPED) {
             return status;
@@ -107,13 +117,18 @@ public class SimulationEngine {
         return status;
     }
 
+    /**
+     * Obtiene el estado actual del motor.
+     * Parámetros: ninguno.
+     * Retorno: EngineStatus - Estado actual (RUNNING/STOPPED).
+     */
     public EngineStatus status() {
         return status;
     }
 
     /**
      * Ciclo de un trabajador: espera un pedido elegible, reserva su mercancía y lo procesa.
-     *
+     * <p>
      * Si la reserva se pierde contra otro trabajador, el pedido vuelve a la espera y este hilo sigue
      * buscando trabajo. Así un pedido sin existencias nunca ocupa un trabajador.
      */
@@ -147,7 +162,7 @@ public class SimulationEngine {
 
     /**
      * Devuelve la mercancía reservada al inventario cuando el pedido no llegó a completarse.
-     *
+     * <p>
      * Si ya se había retirado del almacén, la trazabilidad del retiro permite devolver exactamente
      * las mismas unidades a las mismas ubicaciones. Si solo estaba reservada, basta con liberarla.
      * Cualquiera de los dos caminos conserva el inventario consistente.
@@ -158,21 +173,23 @@ public class SimulationEngine {
         }
         orders.update(order.id(), current -> current.status() == OrderStatus.COMPLETED
                 || current.status() == OrderStatus.ERROR ? current
-                        : current.fail("No se completó el pedido; su mercancía se devolvió al inventario."));
+                : current.fail("No se completó el pedido; su mercancía se devolvió al inventario."));
         recoverIssuedStock(order.id());
         if (reservation != null) {
             inventory.release(reservation);
         }
     }
 
-    /** Recupera el retiro registrado para el pedido, si lo hubo. */
+    /**
+     * Recupera el retiro registrado para el pedido, si lo hubo.
+     */
     private void recoverIssuedStock(String orderId) {
         inventory.findIssue(orderId).ifPresent(inventory::recover);
     }
 
     /**
      * Ejecuta las etapas del pedido y devuelve la trazabilidad del retiro de mercancía.
-     *
+     * <p>
      * La mercancía se toma físicamente al empezar la preparación, que es cuando un encargado va por
      * ella. A partir de ahí el inventario baja de verdad y el espacio queda libre para reutilizar.
      */
@@ -202,7 +219,9 @@ public class SimulationEngine {
         return issue;
     }
 
-    /** Avanza el progreso de una etapa en pasos cortos hasta consumir su tiempo simulado. */
+    /**
+     * Avanza el progreso de una etapa en pasos cortos hasta consumir su tiempo simulado.
+     */
     private void runStage(String orderId, StagePlanner.Stage stage, double completedWork, double total)
             throws InterruptedException {
         long duration = clock.realNanos(stage.simulatedSeconds());
@@ -228,5 +247,5 @@ public class SimulationEngine {
         stop();
     }
 
-    public enum EngineStatus { NOT_STARTED, RUNNING, STOPPING, STOPPED }
+    public enum EngineStatus {NOT_STARTED, RUNNING, STOPPING, STOPPED}
 }

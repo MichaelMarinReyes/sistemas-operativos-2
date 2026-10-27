@@ -9,13 +9,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class SimulationController {
     private final SimulationCoordinator coordinator;
 
-    public SimulationController(SimulationCoordinator coordinator) { this.coordinator = coordinator; }
+    public SimulationController(SimulationCoordinator coordinator) {
+        this.coordinator = coordinator;
+    }
 
     @PostMapping("/start")
-    public EngineResponse start() { return new EngineResponse(coordinator.start()); }
+    public EngineResponse start() {
+        return new EngineResponse(coordinator.start());
+    }
 
     @PostMapping("/stop")
-    public EngineResponse stop() { return new EngineResponse(coordinator.stop()); }
+    public EngineResponse stop() {
+        return new EngineResponse(coordinator.stop());
+    }
 
-    public record EngineResponse(SimulationEngine.EngineStatus status) {}
+    public record EngineResponse(SimulationEngine.EngineStatus status) {
+    }
 }

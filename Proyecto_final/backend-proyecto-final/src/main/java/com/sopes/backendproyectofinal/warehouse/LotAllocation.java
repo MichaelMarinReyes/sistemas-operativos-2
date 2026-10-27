@@ -2,7 +2,7 @@ package com.sopes.backendproyectofinal.warehouse;
 
 /**
  * Parte de un lote ubicada físicamente en una posición concreta.
- *
+ * <p>
  * La suma de unidades de todas las partes de un lote es su cantidad total, y la suma de volumen
  * coincide con el que esas unidades aportan a la ubicación donde están.
  */

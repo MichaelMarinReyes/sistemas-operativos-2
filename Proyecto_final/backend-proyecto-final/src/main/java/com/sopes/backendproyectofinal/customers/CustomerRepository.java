@@ -1,12 +1,15 @@
 package com.sopes.backendproyectofinal.customers;
 
+import org.springframework.stereotype.Repository;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
-/** Almacenamiento en memoria; las cuentas se reinician con el servidor. */
+/**
+ * Almacenamiento en memoria; las cuentas se reinician con el servidor.
+ */
 @Repository
 public class CustomerRepository {
     private final ConcurrentHashMap<String, Customer> customers = new ConcurrentHashMap<>();

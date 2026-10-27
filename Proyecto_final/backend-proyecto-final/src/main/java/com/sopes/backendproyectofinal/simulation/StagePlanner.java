@@ -4,19 +4,24 @@ import com.sopes.backendproyectofinal.catalog.MerchandiseType;
 import com.sopes.backendproyectofinal.orders.Order;
 import com.sopes.backendproyectofinal.orders.OrderStage;
 import com.sopes.backendproyectofinal.resources.ResourceType;
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Component;
 
 @Component
 public class StagePlanner {
     private final SimulationSettings settings;
 
-    public StagePlanner(SimulationSettings settings) { this.settings = settings; }
+    public StagePlanner(SimulationSettings settings) {
+        this.settings = settings;
+    }
 
-    /** Agrupa mercancías del mismo tipo y consolida escaneo/carga después de prepararlas todas. */
+    /**
+     * Agrupa mercancías del mismo tipo y consolida escaneo/carga después de prepararlas todas.
+     */
     public List<Stage> plan(Order order) {
         Map<MerchandiseType, Integer> groups = new EnumMap<>(MerchandiseType.class);
         order.lines().forEach(line -> groups.merge(line.merchandiseType(), line.quantity(), Integer::sum));
@@ -25,7 +30,8 @@ public class StagePlanner {
             Map<ResourceType, Integer> required = new EnumMap<>(ResourceType.class);
             required.put(ResourceType.WORKER, type == MerchandiseType.BULKY || type == MerchandiseType.ELECTRONICS ? 2 : 1);
             required.put(ResourceType.PACKING, 1);
-            if (type == MerchandiseType.FRAGILE || type == MerchandiseType.ELECTRONICS) required.put(ResourceType.QUALITY, 1);
+            if (type == MerchandiseType.FRAGILE || type == MerchandiseType.ELECTRONICS)
+                required.put(ResourceType.QUALITY, 1);
             if (type == MerchandiseType.HEAVY || type == MerchandiseType.BULKY) required.put(ResourceType.FORKLIFT, 1);
             double factor = switch (type) {
                 case GENERAL -> 1;
@@ -42,5 +48,6 @@ public class StagePlanner {
         return List.copyOf(stages);
     }
 
-    public record Stage(OrderStage stage, double simulatedSeconds, Map<ResourceType, Integer> resources) {}
+    public record Stage(OrderStage stage, double simulatedSeconds, Map<ResourceType, Integer> resources) {
+    }
 }

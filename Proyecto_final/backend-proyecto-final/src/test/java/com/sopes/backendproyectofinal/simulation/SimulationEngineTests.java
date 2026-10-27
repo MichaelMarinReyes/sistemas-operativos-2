@@ -7,14 +7,15 @@ import com.sopes.backendproyectofinal.inventory.WarehouseSettings;
 import com.sopes.backendproyectofinal.orders.*;
 import com.sopes.backendproyectofinal.resources.ResourceManager;
 import com.sopes.backendproyectofinal.shared.SimulationState;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,7 +32,9 @@ class SimulationEngineTests {
     private SimulationEngine engine;
     private SimulationClock clock;
 
-    /** Inventario con existencias de sobra, para que la prueba mida el motor y no la escasez. */
+    /**
+     * Inventario con existencias de sobra, para que la prueba mida el motor y no la escasez.
+     */
     private static InventoryService stockedInventory(Map<String, Integer> stock) {
         WarehouseSettings settings = new WarehouseSettings();
         settings.setAisles(25);
@@ -53,9 +56,13 @@ class SimulationEngineTests {
     }
 
     @AfterEach
-    void stop() { engine.close(); }
+    void stop() {
+        engine.close();
+    }
 
-    /** Crea y registra un pedido de un solo producto del catálogo, con existencias de sobra. */
+    /**
+     * Crea y registra un pedido de un solo producto del catálogo, con existencias de sobra.
+     */
     private Order create(String productId, int quantity, MerchandiseType type) {
         Order order = new Order(UUID.randomUUID().toString(), "customer", "Cliente", 3,
                 List.of(new OrderLine(productId, "Producto", type, quantity)), quantity,
@@ -129,7 +136,9 @@ class SimulationEngineTests {
         assertTrue(resources.snapshot().stream().allMatch(resource -> resource.inUse() == 0));
     }
 
-    /** Un pedido sin existencias no ocupa a ningún trabajador ni bloquea a los que sí las tienen. */
+    /**
+     * Un pedido sin existencias no ocupa a ningún trabajador ni bloquea a los que sí las tienen.
+     */
     @Test
     void orderWithoutStockWaitsWithoutBlockingTheQueue() {
         Order blocked = new Order(UUID.randomUUID().toString(), "customer", "Sin stock", 1,
@@ -151,7 +160,8 @@ class SimulationEngineTests {
         OrderRepository failingRepository = new OrderRepository(state, failingInventory);
         ResourceManager failingResources = new ResourceManager(state);
         SimulationClock failingClock = new SimulationClock(settings) {
-            @Override public long realNanos(double simulatedSeconds) {
+            @Override
+            public long realNanos(double simulatedSeconds) {
                 throw new IllegalStateException("Falla controlada de la prueba.");
             }
         };
@@ -168,6 +178,8 @@ class SimulationEngineTests {
             // La mercancía tomada se devolvió al almacén con la misma cantidad.
             assertEquals(10, failingInventory.snapshot().item("GEN-01").stock());
             assertEquals(0, failingInventory.snapshot().totalReserved());
-        } finally { failingEngine.close(); }
+        } finally {
+            failingEngine.close();
+        }
     }
 }

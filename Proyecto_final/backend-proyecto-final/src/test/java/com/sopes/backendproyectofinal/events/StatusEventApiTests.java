@@ -1,6 +1,10 @@
 package com.sopes.backendproyectofinal.events;
 
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,9 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -26,9 +27,13 @@ class StatusEventApiTests {
     @LocalServerPort
     private int port;
 
-    /** Lee un campo del payload JSON del evento sin depender de una biblioteca de mapeo. */
+    /**
+     * Lee un campo del payload JSON del evento sin depender de una biblioteca de mapeo.
+     */
     private record Event(String name, String id, String data) {
-        Object field(String path) throws Exception { return JsonPath.read(data, path); }
+        Object field(String path) throws Exception {
+            return JsonPath.read(data, path);
+        }
     }
 
     @Test
@@ -81,7 +86,9 @@ class StatusEventApiTests {
                 reader.readLine();
             } catch (IOException expectedOnCutConnection) {
                 // El corte abrupto es justamente lo que esta prueba provoca.
-            } finally { connection.disconnect(); }
+            } finally {
+                connection.disconnect();
+            }
         }).doesNotThrowAnyException();
 
         List<Event> events = readEvents(2, Duration.ofSeconds(6));
@@ -89,7 +96,9 @@ class StatusEventApiTests {
         assertThat((String) events.get(0).field("$.runId")).isNotBlank();
     }
 
-    /** Registra datos por HTTP para provocar cambios observables en la transmisión. */
+    /**
+     * Registra datos por HTTP para provocar cambios observables en la transmisión.
+     */
     private String post(String path, String body) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) URI.create("http://localhost:" + port + path).toURL().openConnection();
         connection.setRequestMethod("POST");
@@ -103,7 +112,9 @@ class StatusEventApiTests {
         assertThat(connection.getResponseCode()).isLessThan(300);
         try (var input = connection.getInputStream()) {
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        } finally { connection.disconnect(); }
+        } finally {
+            connection.disconnect();
+        }
     }
 
     private HttpURLConnection open() throws IOException {
@@ -115,7 +126,9 @@ class StatusEventApiTests {
         return connection;
     }
 
-    /** Lee eventos hasta alcanzar la cantidad esperada o agotar el plazo, y cierra la conexión. */
+    /**
+     * Lee eventos hasta alcanzar la cantidad esperada o agotar el plazo, y cierra la conexión.
+     */
     private List<Event> readEvents(int expected, Duration timeout) throws Exception {
         List<Event> events = new ArrayList<>();
         HttpURLConnection connection = open();
@@ -138,9 +151,13 @@ class StatusEventApiTests {
                     data.setLength(0);
                 }
             }
-        } finally { connection.disconnect(); }
+        } finally {
+            connection.disconnect();
+        }
         return events;
     }
 
-    private String url() { return "http://localhost:" + port + "/api/events"; }
+    private String url() {
+        return "http://localhost:" + port + "/api/events";
+    }
 }

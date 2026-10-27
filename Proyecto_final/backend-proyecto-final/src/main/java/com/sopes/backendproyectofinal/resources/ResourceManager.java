@@ -1,15 +1,17 @@
+/**
+ * Administrador de recursos compartidos del centro de distribución.
+ * Utiliza semáforos justos, locks y conditions para controlar el acceso concurrente.
+ */
+
 package com.sopes.backendproyectofinal.resources;
 
 import com.sopes.backendproyectofinal.shared.SimulationState;
+import org.springframework.stereotype.Component;
+
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Condition;
-import org.springframework.stereotype.Component;
 
 @Component
 public class ResourceManager {
@@ -32,7 +34,9 @@ public class ResourceManager {
         }
     }
 
-    /** Adquiere el conjunto completo o revierte permisos parciales antes de esperar. */
+    /**
+     * Adquiere el conjunto completo o revierte permisos parciales antes de esperar.
+     */
     public Lease acquire(String operationId, Map<ResourceType, Integer> required) throws InterruptedException {
         Map<ResourceType, Integer> ordered = new EnumMap<>(ResourceType.class);
         ordered.putAll(required);
@@ -83,17 +87,23 @@ public class ResourceManager {
                     entry.getKey().label(), entry.getKey().capacity(),
                     entry.getKey().capacity() - permits.get(entry.getKey()).availablePermits(),
                     List.copyOf(entry.getValue()))).toList();
-        } finally { state.lock.unlock(); }
+        } finally {
+            state.lock.unlock();
+        }
     }
 
     public List<ResourceRequest> pendingRequests() {
         state.lock.lock();
         try {
             return requests.entrySet().stream().map(entry -> new ResourceRequest(entry.getKey(), entry.getValue())).toList();
-        } finally { state.lock.unlock(); }
+        } finally {
+            state.lock.unlock();
+        }
     }
 
-    /** La liberación idempotente pertenece al trabajador y se utiliza con try-with-resources. */
+    /**
+     * La liberación idempotente pertenece al trabajador y se utiliza con try-with-resources.
+     */
     public final class Lease implements AutoCloseable {
         private final String ownerId;
         private final Map<ResourceType, Integer> allocation;
@@ -117,11 +127,19 @@ public class ResourceManager {
                 });
                 closed = true;
                 available.signalAll();
-            } finally { state.lock.unlock(); }
+            } finally {
+                state.lock.unlock();
+            }
         }
     }
 
-    public record ResourceInstance(String id, String ownerId, Instant acquiredAt) {}
-    public record ResourceSummary(ResourceType type, String name, int capacity, int inUse, List<ResourceInstance> instances) {}
-    public record ResourceRequest(String operationId, Map<ResourceType, Integer> required) {}
+    public record ResourceInstance(String id, String ownerId, Instant acquiredAt) {
+    }
+
+    public record ResourceSummary(ResourceType type, String name, int capacity, int inUse,
+                                  List<ResourceInstance> instances) {
+    }
+
+    public record ResourceRequest(String operationId, Map<ResourceType, Integer> required) {
+    }
 }

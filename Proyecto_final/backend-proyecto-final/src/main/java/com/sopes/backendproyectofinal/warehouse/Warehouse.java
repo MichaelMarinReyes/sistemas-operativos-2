@@ -1,6 +1,7 @@
 package com.sopes.backendproyectofinal.warehouse;
 
 import com.sopes.backendproyectofinal.catalog.Product;
+
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8,12 +9,12 @@ import java.util.Map;
 
 /**
  * Almacén de 100 ubicaciones de 10 unidades de volumen, identificadas por pasillo, estante y nivel.
- *
+ * <p>
  * No es seguro entre hilos por sí mismo. Tiene un único propietario, el servicio de inventario, que
  * lo modifica siempre dentro de su propio bloqueo. Declararlo aquí evita que un controlador lo use
  * por su cuenta y rompa el aislamiento del inventario, que es el requisito de comunicación entre
  * áreas del enunciado.
- *
+ * <p>
  * La asignación es no contigua: nunca se exige que un lote viva en un tramo seguido de estantes. Las
  * unidades se colocan primero donde ya hay producto del mismo tipo y después en la ubicación libre
  * que mejor ajusta, de modo que un lote queda repartido entre posiciones no contiguas.
@@ -77,19 +78,23 @@ public class Warehouse {
         return new StorageLocation(id, id, locationCapacity, usedVolumeByLocation.get(id));
     }
 
-    /** Copia inmutable de todas las ubicaciones, ordenada por identificador. */
+    /**
+     * Copia inmutable de todas las ubicaciones, ordenada por identificador.
+     */
     public List<StorageLocation> locations() {
         return capacityByLocation.keySet().stream().sorted().map(this::location).toList();
     }
 
-    /** Unidades de un producto que están físicamente en una ubicación concreta. */
+    /**
+     * Unidades de un producto que están físicamente en una ubicación concreta.
+     */
     public int unitsAt(String locationId, String productId) {
         return unitsByLocationAndProduct.get(locationId).getOrDefault(productId, 0);
     }
 
     /**
      * Coloca unidades completas de un producto, actualiza el almacén y devuelve las partes del lote.
-     *
+     * <p>
      * Solo se asignan unidades que caben enteras: una ubicación cuyo volumen libre sea menor que el
      * de una unidad se descarta aunque tenga espacio parcial. Si no cabe nada se devuelve una lista
      * vacía y el almacén queda intacto, para que quien llama pueda dejar la mercancía pendiente de
@@ -119,7 +124,7 @@ public class Warehouse {
 
     /**
      * Coloca unidades en una ubicación concreta y devuelve cuántas entraron.
-     *
+     * <p>
      * Es la operación que hace exacta la recuperación de un pedido fallido: las unidades vuelven
      * primero a la ubicación de la que se retiraron, que es donde el encargado las dejó. Si ya no
      * caben, quien llama las recoloca con el criterio general y la mercancía no se pierde.
@@ -162,7 +167,9 @@ public class Warehouse {
         return units - remaining;
     }
 
-    /** Mejor ajuste: la ubicación libre más pequeña que todavía admite una unidad completa. */
+    /**
+     * Mejor ajuste: la ubicación libre más pequeña que todavía admite una unidad completa.
+     */
     private void placeInBestFitFreeLocations(Product product, Map<String, Integer> placement, int units) {
         int remaining = units;
         for (String locationId : sortedByFreeVolumeAscending()) {
@@ -193,7 +200,9 @@ public class Warehouse {
                 .toList();
     }
 
-    /** Libera el espacio de una ubicación al retirar unidades ya colocadas. */
+    /**
+     * Libera el espacio de una ubicación al retirar unidades ya colocadas.
+     */
     public void withdraw(String locationId, String productId, int units, int unitVolume) {
         Map<String, Integer> byProduct = unitsByLocationAndProduct.get(locationId);
         int present = byProduct.getOrDefault(productId, 0);

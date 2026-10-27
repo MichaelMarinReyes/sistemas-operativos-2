@@ -5,13 +5,14 @@ import com.sopes.backendproyectofinal.catalog.Product;
 import com.sopes.backendproyectofinal.customers.Customer;
 import com.sopes.backendproyectofinal.customers.CustomerService;
 import com.sopes.backendproyectofinal.shared.ApiException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 
 @Service
 public class OrderService {
@@ -25,7 +26,9 @@ public class OrderService {
         this.catalog = catalog;
     }
 
-    /** Valida todas las referencias antes de guardar; no deja pedidos parcialmente registrados. */
+    /**
+     * Valida todas las referencias antes de guardar; no deja pedidos parcialmente registrados.
+     */
     public Order create(CreateOrderRequest request) {
         Customer customer = customers.findById(request.customerId());
         Set<String> productIds = new HashSet<>();
@@ -68,5 +71,6 @@ public class OrderService {
         return new Summary(snapshot.size() - processing - completed - failed, processing, completed, failed);
     }
 
-    public record Summary(int waiting, int processing, int completed, int failed) {}
+    public record Summary(int waiting, int processing, int completed, int failed) {
+    }
 }

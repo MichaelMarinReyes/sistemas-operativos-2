@@ -1,20 +1,22 @@
+/**
+ * Repositorio concurrente de pedidos.
+ * Protege el acceso al mapa con ReentrantLock y mantiene estado consistente.
+ */
+
 package com.sopes.backendproyectofinal.orders;
 
 import com.sopes.backendproyectofinal.inventory.InventoryService;
 import com.sopes.backendproyectofinal.inventory.StockAvailabilityListener;
 import com.sopes.backendproyectofinal.shared.SimulationState;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+import java.util.*;
 import java.util.concurrent.locks.Condition;
 import java.util.function.UnaryOperator;
-import org.springframework.stereotype.Repository;
 
 /**
  * Almacén de pedidos y punto de selección para los trabajadores.
- *
+ * <p>
  * Todas las operaciones se serializan con el bloqueo de SimulationState, y la captura de una
  * instantánea del inventario nunca se hace tomando el bloqueo del inventario. Esa es la razón por la
  * que el servicio de inventario publica una instantánea inmutable en un campo volátil: leerla no
@@ -58,17 +60,17 @@ public class OrderRepository implements StockAvailabilityListener {
 
     /**
      * Retira de la cola el mejor pedido elegible y lo devuelve en estado QUEUED.
-     *
+     * <p>
      * Elegible significa que tiene existencias suficientes para todas sus líneas. La comprobación usa
      * la instantánea publicada del inventario, así que no toma el bloqueo del inventario y no puede
      * quedar atrapada esperando. Un pedido sin existencias no bloquea al resto de la cola: el
      * trabajador simplemente sigue esperando y otro puede avanzar.
-     *
+     * <p>
      * La instantánea puede estar desactualizada, porque entre que se lee y se hace la reserva otro
      * pedido puede haberse llevado las mismas unidades. Por eso la reserva vuelve a comprobar y, si
      * pierde la carrera, devuelve el pedido a WAITING_STOCK. La comprobación de la instantánea es una
      * pista para no despertar trabajadores inútiles; la que manda es la de la reserva.
-     *
+     * <p>
      * Selección, transición y escritura ocurren en una sola región crítica, de modo que dos
      * trabajadores nunca retiran el mismo pedido.
      */
@@ -141,7 +143,9 @@ public class OrderRepository implements StockAvailabilityListener {
         }
     }
 
-    /** Despierta a los trabajadores en espera cuando cambia la disponibilidad de existencias. */
+    /**
+     * Despierta a los trabajadores en espera cuando cambia la disponibilidad de existencias.
+     */
     @Override
     public void onAvailabilityChanged() {
         state.lock.lock();
@@ -152,7 +156,9 @@ public class OrderRepository implements StockAvailabilityListener {
         }
     }
 
-    /** Devuelve una copia ordenada, sin exponer la colección mutable compartida. */
+    /**
+     * Devuelve una copia ordenada, sin exponer la colección mutable compartida.
+     */
     public List<Order> findAll() {
         state.lock.lock();
         try {

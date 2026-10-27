@@ -3,7 +3,7 @@ package com.sopes.backendproyectofinal.inventory;
 /**
  * Existencias de un producto: cuántas unidades hay físicamente, cuántas están comprometidas con
  * pedidos y cuántas siguen libres.
- *
+ * <p>
  * Las unidades pendientes ya son existencias, pero no se pueden reservar hasta encontrar ubicación.
  */
 public record InventoryItem(String productId, int stock, int reserved, int pendingPlacement) {
@@ -14,9 +14,17 @@ public record InventoryItem(String productId, int stock, int reserved, int pendi
         }
     }
 
-    /** Unidades que un pedido nuevo podría reservar ahora mismo. */
-    public int available() { return stock - reserved - pendingPlacement; }
+    /**
+     * Unidades que un pedido nuevo podría reservar ahora mismo.
+     */
+    public int available() {
+        return stock - reserved - pendingPlacement;
+    }
 
-    /** Coherencia interna: nada comprometido por encima de lo existente. */
-    public boolean isConsistent() { return reserved <= stock - pendingPlacement; }
+    /**
+     * Coherencia interna: nada comprometido por encima de lo existente.
+     */
+    public boolean isConsistent() {
+        return reserved <= stock - pendingPlacement;
+    }
 }

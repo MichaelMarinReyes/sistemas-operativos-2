@@ -1,6 +1,8 @@
 package com.sopes.backendproyectofinal.resources;
 
-/** El orden de declaración es el orden global de adquisición de recursos. */
+/**
+ * El orden de declaración es el orden global de adquisición de recursos.
+ */
 public enum ResourceType {
     WORKER("Encargados de bodega", 10),
     FORKLIFT("Montacargas", 3),
@@ -12,7 +14,16 @@ public enum ResourceType {
     private final String label;
     private final int capacity;
 
-    ResourceType(String label, int capacity) { this.label = label; this.capacity = capacity; }
-    public String label() { return label; }
-    public int capacity() { return capacity; }
+    ResourceType(String label, int capacity) {
+        this.label = label;
+        this.capacity = capacity;
+    }
+
+    public String label() {
+        return label;
+    }
+
+    public int capacity() {
+        return capacity;
+    }
 }

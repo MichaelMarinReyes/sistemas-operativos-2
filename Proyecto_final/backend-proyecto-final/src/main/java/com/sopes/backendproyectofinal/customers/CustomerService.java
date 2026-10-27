@@ -1,11 +1,12 @@
 package com.sopes.backendproyectofinal.customers;
 
 import com.sopes.backendproyectofinal.shared.ApiException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService {

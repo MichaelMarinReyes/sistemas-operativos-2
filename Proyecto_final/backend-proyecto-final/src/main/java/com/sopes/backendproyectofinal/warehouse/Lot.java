@@ -4,12 +4,12 @@ import java.util.List;
 
 /**
  * Lote de un producto dentro del almacén, con la lista de ubicaciones donde está repartido.
- *
+ * <p>
  * Un lote no exige posiciones contiguas: guarda todas las ubicaciones donde tiene unidades, que es el
  * requisito de asignación no contigua del enunciado. Al ser un registro inmutable y derivado del
  * almacén físico, nunca puede desincronizarse de la realidad: si el almacén dice que quedan cuatro
  * unidades repartidas en tres ubicaciones, el lote dice exactamente eso.
- *
+ * <p>
  * El número de orden registra cuántas recepciones se han consolidado en el lote, de modo que se puede
  * seguir el rastro de la mercancía desde que entró hasta que salió.
  */
@@ -31,17 +31,23 @@ public record Lot(String id, String productId, int units, List<LotAllocation> al
                 allocations.stream().mapToInt(LotAllocation::units).sum(), allocations, receipts);
     }
 
-    /** Volumen total que ocupa el lote en el almacén. */
+    /**
+     * Volumen total que ocupa el lote en el almacén.
+     */
     public int usedVolume() {
         return allocations.stream().mapToInt(LotAllocation::usedVolume).sum();
     }
 
-    /** Cuántas ubicaciones distintas ocupa, sean consecutivas o separadas. */
+    /**
+     * Cuántas ubicaciones distintas ocupa, sean consecutivas o separadas.
+     */
     public int locationCount() {
         return allocations.size();
     }
 
-    /** Indica si el lote está repartido entre varias ubicaciones; no mide su adyacencia. */
+    /**
+     * Indica si el lote está repartido entre varias ubicaciones; no mide su adyacencia.
+     */
     public boolean isSplit() {
         return allocations.size() > 1;
     }

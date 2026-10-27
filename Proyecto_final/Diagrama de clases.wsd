@@ -1,0 +1,736 @@
+@startuml Diagrama de Clases - REDXela
+
+title Diagrama de Clases - Sistema REDXela
+
+package "Backend" {
+
+  package "Pedidos" {
+    class Order {
+      -String id
+      -String customerId
+      -String productId
+      -int quantity
+      -int priority
+      -OrderStatus status
+      -OrderStage stage
+      -String failureReason
+      -Instant createdAt
+      -Instant startedAt
+      -Instant finishedAt
+      -Instant processingStartedAt
+      -String assignedWorkerId
+      -String reservationId
+      +getPriority()
+      +setPriority(int)
+    }
+    
+    enum OrderStatus {
+      CREATED
+      WAITING_STOCK
+      QUEUED
+      WAITING_RESOURCES
+      PROCESSING
+      DEADLOCKED
+      COMPLETED
+      ERROR
+    }
+    
+    enum OrderStage {
+      NOT_STARTED
+      PREPARING
+      SCANNING
+      LOADING
+      COMPLETED
+    }
+    
+    class OrderRepository {
+      -Map<String, Order> orders
+      -ReentrantLock lock
+      -long revision
+      +all()
+      +find(id)
+      +enqueue(order)
+      +awaitNextEligible(snapshot)
+      +nextForProcessing()
+      +waitingOrders()
+      +revision()
+    }
+    
+    class OrderService {
+      -OrderRepository repository
+      -CustomerService customers
+      -CatalogService catalog
+      +create(customerId, productId, quantity)
+      +list(page, size)
+      +summarize()
+    }
+  }
+
+  package "Clientes" {
+    class Customer {
+      -String id
+      -String name
+      -int serviceLevel
+    }
+    
+    class CustomerService {
+      -List<Customer> customers
+      +register(customer)
+      +all()
+      +find(id)
+    }
+  }
+
+  package "Catalogo" {
+    class Product {
+      -String id
+      -String name
+      -MerchandiseType merchandiseType
+      -double unitVolume
+    }
+    
+    enum MerchandiseType {
+      GENERAL
+      FRAGILE
+      HEAVY
+      BULKY
+      ELECTRONICS
+    }
+    
+    class CatalogService {
+      -Map<String, Product> products
+      +register(product)
+      +findById(id)
+      +all()
+    }
+  }
+
+  package "Recursos" {
+    enum ResourceType {
+      WORKER
+      FORKLIFT
+      PACKING
+      QUALITY
+      SCANNER
+      LOADING
+    }
+    
+    class ResourceInstance {
+      -String id
+      -String ownerId
+      -Instant acquiredAt
+    }
+    
+    class ResourceManager {
+      -SimulationState state
+      -Condition available
+      -Map<ResourceType, Semaphore> permits
+      -Map<ResourceType, List<ResourceInstance>> instances
+      -Map<String, Map<ResourceType, Integer>> requests
+      +acquire(operationId, required)
+      +release(operationId)
+      +snapshot()
+      +pendingRequests()
+    }
+    
+    class ResourceSummary {
+    }
+    
+    class ResourceRequest {
+      -String operationId
+      -Map<ResourceType, Integer> required
+    }
+  }
+
+  package "Almacen" {
+    class Warehouse {
+      -List<Location> locations
+      -List<Lot> lots
+      +place(productId, units, receiptId)
+      +withdraw(lines)
+      +tryPlacePending()
+      +locations()
+      +lots()
+    }
+    
+    class Location {
+      -String id
+      -int capacity
+      -int used
+    }
+    
+    class Lot {
+      -String id
+      -String productId
+      -int units
+      -Map<String, Integer> allocations
+      -String receiptId
+    }
+    
+    class LotAllocation {
+      -String locationId
+      -int units
+    }
+  }
+
+  package "Inventario" {
+    class InventoryItem {
+      -String productId
+      -int stock
+      -int reserved
+      -int pendingPlacement
+    }
+    
+    class StockReservation {
+      -String id
+      -String orderId
+      -String productId
+      -int units
+      -Map<String, Integer> locationLines
+      -List<LotAllocation> lots
+    }
+    
+    class StockReceipt {
+      -String id
+      -String productId
+      -int units
+    }
+    
+    class StockIssue {
+      -String reservationId
+      -String orderId
+      -List<LotAllocation> withdrawn
+    }
+    
+    class ReceiptPlacement {
+      -StockReceipt message
+      -int pendingUnits
+      +placedUnits()
+    }
+    
+    class InventorySnapshot {
+      -long revision
+      -Instant generatedAt
+      -Map<String, InventoryItem> items
+      -List<Lot> lots
+      -List<Location> locations
+      -int occupiedVolume
+      -int availableVolume
+      -Map<String, ReceiptPlacement> receipts
+      +canSatisfy(productId, units)
+      +blockingProduct(productId)
+    }
+    
+    class InventoryService {
+      -CatalogService catalog
+      -Warehouse warehouse
+      -ReentrantLock lock
+      -InventorySnapshot published
+      -Map<String, StockReservation> reservations
+      -Map<String, ReceiptPlacement> receipts
+      +receive(productId, units)
+      +applyReceipt(message)
+      +planWithdrawal(productId, units)
+      +consume(reservationId)
+      +recover(reservationId)
+      +snapshot()
+      +reset()
+    }
+  }
+
+  package "Recepcion" {
+    enum ReceiptStatus {
+      PENDING
+      WAITING_SCANNER
+      SCANNING
+      WAITING_INVENTORY
+      WAITING_SPACE
+      COMPLETED
+      ERROR
+    }
+    
+    class CreateReceiptRequest {
+      -String productId
+      -Integer quantity
+    }
+    
+    class ReceiptView {
+      -String id
+      -String productId
+      -String productName
+      -int quantity
+      -ReceiptStatus status
+      -int placedUnits
+      -int pendingUnits
+      -Instant createdAt
+      -Instant scannedAt
+      -String errorMessage
+    }
+    
+    class ReceiptReport {
+      -boolean running
+      -int incomingQueueSize
+      -int inventoryQueueSize
+      -int queueCapacity
+      -int maxOutstanding
+      -int total
+      -int outstanding
+      -int completed
+      -int failed
+      -int waitingSpace
+      -List<ReceiptView> items
+    }
+    
+    class ReceiptSettings {
+      -int queueCapacity
+      -int maxOutstanding
+      -int offerTimeoutMilliseconds
+      -int scanSecondsPerUnit
+    }
+    
+    class ReceiptService {
+      -CatalogService catalog
+      -InventoryService inventory
+      -ResourceManager resources
+      -SimulationClock clock
+      -ReceiptSettings settings
+      -BlockingQueue<StockReceipt> incoming
+      -BlockingQueue<StockReceipt> scanned
+      -ReentrantLock lock
+      -ExecutorService workers
+      +submit(key, productId, quantity)
+      +start()
+      +stop()
+      +find(id)
+      +report()
+    }
+    
+    class ReceiptController {
+      -ReceiptService receipts
+      +create(request, key)
+      +list()
+      +find(id)
+    }
+  }
+
+  package "Simulacion" {
+    class SimulationSettings {
+      -int simulatedSecondsPerRealSecond
+      -int workerCount
+    }
+    
+    class SimulationClock {
+      -SimulationSettings settings
+      -long accumulatedNanos
+      -long startedAt
+      -boolean running
+      +start()
+      +stop()
+      +elapsedMinutes()
+      +realNanos(simulatedSeconds)
+    }
+    
+    class SimulationState {
+      -ReentrantLock lock
+    }
+    
+    class SimulationEngine {
+      -OrderRepository repository
+      -OrderService orders
+      -ResourceManager resources
+      -InventoryService inventory
+      -SimulationClock clock
+      -SimulationState state
+      -MetricsService metrics
+      -ExecutorService workers
+      +start()
+      +stop()
+      +status()
+    }
+    
+    class SimulationCoordinator {
+      -SimulationEngine engine
+      -ReceiptService receipts
+      +start()
+      +stop()
+    }
+    
+    class SimulationController {
+      -SimulationCoordinator coordinator
+      +start()
+      +stop()
+    }
+  }
+
+  package "Estado" {
+    class StatusResponse {
+      -int contractVersion
+      -String runId
+      -long sequence
+      -Instant generatedAt
+      -EngineStatus simulationStatus
+      -String policy
+      -double elapsedMinutes
+      -int timeScale
+      -int workerCount
+      -List<ResourceSummary> resources
+      -List<ResourceRequest> resourceRequests
+      -WarehouseSummary warehouse
+      -InventorySummary inventory
+      -OrderService.Summary orders
+      -long ordersRevision
+      -List<Order> activeOrders
+      -List<Order> waitingOrders
+      -ReceiptReport receipts
+      -MetricsService.MetricsSnapshot metrics
+    }
+    
+    class StatusService {
+      -SimulationEngine engine
+      -OrderRepository repository
+      -OrderService orders
+      -ResourceManager resources
+      -InventoryService inventory
+      -ReceiptService receipts
+      -MetricsService metrics
+      -SimulationState state
+      +getStatus()
+    }
+    
+    class StatusController {
+      -StatusService statusService
+      +status()
+    }
+  }
+
+  package "Metricas" {
+    class MetricsService {
+      -ReentrantLock lock
+      -AtomicLong completedCount
+      -AtomicLong failedCount
+      -AtomicLong totalWaitMillis
+      -AtomicLong totalProcessMillis
+      -AtomicLong maxWaitMillis
+      -AtomicLong maxProcessMillis
+      +recordCompleted(order)
+      +recordFailed(order)
+      +applyAging(waitingOrders)
+      +getSnapshot()
+    }
+    
+    class MetricsSnapshot {
+      -long completed
+      -long failed
+      -double avgWaitSeconds
+      -double avgProcessSeconds
+      -double maxWaitSeconds
+      -double maxProcessSeconds
+      -double throughputPercent
+    }
+    
+    class MetricsController {
+      -MetricsService metrics
+      +getMetrics()
+    }
+  }
+
+  package "Salud" {
+    class HealthController {
+      -SimulationEngine engine
+      -ReceiptService receipts
+      -InventoryService inventory
+      +status()
+    }
+  }
+
+  package "Administracion" {
+    class AdminController {
+      -InventoryService inventory
+      -OrderRepository orders
+      -OrderService orderService
+      -ReceiptService receipts
+      -SimulationEngine engine
+      +snapshot()
+    }
+  }
+
+  ' Relaciones Backend
+  Order --> OrderStatus
+  Order --> OrderStage
+  OrderRepository o-- Order
+  OrderService --> OrderRepository
+  OrderService --> CustomerService
+  OrderService --> CatalogService
+  
+  CustomerService o-- Customer
+  CatalogService o-- Product
+  Product --> MerchandiseType
+  
+  ResourceManager --> ResourceType
+  ResourceManager o-- ResourceInstance
+  ResourceManager o-- ResourceRequest
+  ResourceRequest --> ResourceType
+  
+  Warehouse o-- Location
+  Warehouse o-- Lot
+  Lot o-- LotAllocation
+  InventoryService --> CatalogService
+  InventoryService --> Warehouse
+  InventoryService o-- StockReservation
+  InventoryService o-- ReceiptPlacement
+  InventoryService o-- StockReceipt
+  InventoryService --> InventorySnapshot
+  InventorySnapshot o-- InventoryItem
+  InventorySnapshot o-- Location
+  InventorySnapshot o-- Lot
+  InventorySnapshot o-- ReceiptPlacement
+  ReceiptPlacement --> StockReceipt
+  StockReservation o-- LotAllocation
+  StockIssue o-- LotAllocation
+  
+  ReceiptService --> CatalogService
+  ReceiptService --> InventoryService
+  ReceiptService --> ResourceManager
+  ReceiptService --> SimulationClock
+  ReceiptService --> ReceiptSettings
+  ReceiptService o-- StockReceipt
+  ReceiptService o-- ReceiptView
+  ReceiptService --> ReceiptReport
+  ReceiptController --> ReceiptService
+  ReceiptView --> ReceiptStatus
+  CreateReceiptRequest --> ReceiptController
+  
+  SimulationEngine --> OrderRepository
+  SimulationEngine --> OrderService
+  SimulationEngine --> ResourceManager
+  SimulationEngine --> InventoryService
+  SimulationEngine --> SimulationClock
+  SimulationEngine --> SimulationState
+  SimulationEngine --> MetricsService
+  SimulationCoordinator --> SimulationEngine
+  SimulationCoordinator --> ReceiptService
+  SimulationController --> SimulationCoordinator
+  SimulationClock --> SimulationSettings
+  
+  StatusService --> SimulationEngine
+  StatusService --> OrderRepository
+  StatusService --> OrderService
+  StatusService --> ResourceManager
+  StatusService --> InventoryService
+  StatusService --> ReceiptService
+  StatusService --> MetricsService
+  StatusService --> SimulationState
+  StatusController --> StatusService
+  StatusResponse --> StatusService
+  StatusResponse o-- ResourceSummary
+  StatusResponse o-- ResourceRequest
+  StatusResponse o-- ReceiptReport
+  StatusResponse o-- MetricsSnapshot
+  StatusResponse o-- Order
+  
+  MetricsService --> MetricsSnapshot
+  MetricsController --> MetricsService
+  
+  HealthController --> SimulationEngine
+  HealthController --> ReceiptService
+  HealthController --> InventoryService
+  
+  AdminController --> InventoryService
+  AdminController --> OrderRepository
+  AdminController --> OrderService
+  AdminController --> ReceiptService
+  AdminController --> SimulationEngine
+}
+
+package "Frontend" {
+
+  package "Navegacion" {
+    class NavBar {
+      -String active
+      +change(view)
+    }
+    
+    class App {
+      -String currentView
+      -CustomersStore customers
+      -CatalogStore catalog
+      -InventoryStore inventory
+      -OrdersStore orders
+      -StatusStore status
+      +changeView(view)
+      +refreshAll()
+      +onOrderCreated()
+    }
+  }
+
+  package "Componentes" {
+    class CustomerForm {
+    }
+    
+    class OrderForm {
+    }
+    
+    class OrderList {
+      -String filter
+      -String workerFilter
+      +filteredOrders()
+    }
+    
+    class ProductCatalog {
+    }
+    
+    class StatusDashboard {
+    }
+    
+    class SimulationControls {
+    }
+    
+    class InventoryTable {
+    }
+    
+    class WarehouseMap {
+    }
+    
+    class ReceiptPanel {
+      -String statusFilter
+      +filteredItems()
+    }
+    
+    class MetricsPanel {
+    }
+    
+    class AdminPanel {
+      +fetchSnapshot()
+      +exportJson()
+    }
+  }
+
+  package "Stores" {
+    class CustomersStore {
+      -Array customers
+      -String selectedCustomerId
+      -boolean loading
+      -String error
+      +load()
+      +create()
+    }
+    
+    class CatalogStore {
+      -Array products
+      -boolean loading
+      -String error
+      +load()
+    }
+    
+    class OrdersStore {
+      -OrderPage result
+      -boolean loading
+      -String error
+      +load(page)
+    }
+    
+    class InventoryStore {
+      -InventoryResponse inventory
+      -WarehouseResponse warehouse
+      -boolean loading
+      -String error
+      +load()
+    }
+    
+    class StatusStore {
+      -StatusResponse status
+      -boolean loading
+      -String error
+      -String connection
+      -String streamError
+      +connect()
+      +disconnect()
+      +refresh()
+    }
+  }
+
+  package "API" {
+    class HttpClient {
+      +request(url, options)
+      +errorMessage(cause)
+    }
+  }
+
+  ' Relaciones Frontend
+  App --> NavBar
+  App --> SimulationControls
+  App --> StatusDashboard
+  App --> CustomerForm
+  App --> OrderForm
+  App --> OrderList
+  App --> ProductCatalog
+  App --> ReceiptPanel
+  App --> InventoryTable
+  App --> WarehouseMap
+  App --> MetricsPanel
+  App --> AdminPanel
+  App --> CustomersStore
+  App --> CatalogStore
+  App --> InventoryStore
+  App --> OrdersStore
+  App --> StatusStore
+  
+  CustomersStore --> HttpClient
+  CatalogStore --> HttpClient
+  OrdersStore --> HttpClient
+  InventoryStore --> HttpClient
+  StatusStore --> HttpClient
+  
+  OrderList --> OrdersStore
+  OrderList --> StatusStore
+  OrderList --> InventoryStore
+  
+  ProductCatalog --> CatalogStore
+  CustomerForm --> CustomersStore
+  OrderForm --> CustomersStore
+  OrderForm --> CatalogStore
+  InventoryTable --> InventoryStore
+  WarehouseMap --> InventoryStore
+  ReceiptPanel --> StatusStore
+  MetricsPanel --> StatusStore
+  AdminPanel --> HttpClient
+}
+
+' Relaciones entre Backend y Frontend
+CustomersStore ..> CustomerService : REST
+CatalogStore ..> CatalogService : REST
+OrdersStore ..> OrderService : REST
+InventoryStore ..> InventoryService : REST
+StatusStore ..> StatusService : SSE/REST
+ReceiptPanel ..> ReceiptController : REST
+MetricsPanel ..> MetricsController : REST
+AdminPanel ..> AdminController : REST
+
+
+' Sincronización
+note top of SimulationEngine
+  Usa ExecutorService, locks
+  y sincronización para workers
+end note
+
+note top of ResourceManager
+  Usa Semaphore, ReentrantLock,
+  Condition para recursos compartidos
+end note
+
+note top of InventoryService
+  Escritor único con ReentrantLock
+  para todas las modificaciones
+end note
+
+note top of ReceiptService
+  Productor-Consumidor con
+  BlockingQueue y hilos
+end note
+
+note top of OrderRepository
+  ReentrantLock para acceso
+  concurrente al repositorio
+end note
+
+@enduml

@@ -2,7 +2,7 @@ package com.sopes.backendproyectofinal.warehouse;
 
 /**
  * Ubicación física identificada por pasillo, estante y nivel.
- *
+ * <p>
  * Es una vista inmutable: el almacén mutable mantiene su propio estado y publica copias de este
  * registro para que ninguna ruta de lectura observe un objeto compartido mientras se modifica.
  */
@@ -17,7 +17,9 @@ public record StorageLocation(String id, String label, int capacity, int usedVol
         }
     }
 
-    /** Volumen todavía disponible de la ubicación. */
+    /**
+     * Volumen todavía disponible de la ubicación.
+     */
     public int availableVolume() {
         return capacity - usedVolume;
     }

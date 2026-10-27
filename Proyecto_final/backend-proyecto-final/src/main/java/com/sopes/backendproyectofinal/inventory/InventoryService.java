@@ -1,3 +1,8 @@
+/**
+ * Servicio de inventario con escritor único.
+ * Todas las modificaciones al inventario se realizan bajo ReentrantLock para garantizar exclusividad.
+ */
+
 package com.sopes.backendproyectofinal.inventory;
 
 import com.sopes.backendproyectofinal.catalog.CatalogService;
@@ -6,32 +11,26 @@ import com.sopes.backendproyectofinal.orders.Order;
 import com.sopes.backendproyectofinal.warehouse.Lot;
 import com.sopes.backendproyectofinal.warehouse.LotAllocation;
 import com.sopes.backendproyectofinal.warehouse.Warehouse;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * Único responsable de modificar existencias y de colocar mercancía en el almacén.
- *
+ * <p>
  * Ningún otro componente toca estas estructuras. Recepción, preparación y despacho hablan con este
  * servicio a través de sus métodos, nunca con el almacén directamente. Eso cumple el requisito de
  * aislamiento del inventario: dos áreas que se comunican mal no pueden dejar el almacén
  * inconsistente, porque no existe una segunda puerta de entrada.
- *
+ * <p>
  * Todas las operaciones compuestas aplican el mismo patrón: se valida todo primero y solo después se
  * aplica, dentro de un único bloqueo. Ese es el mecanismo único que evita la sobreventa y las
  * reservas parciales.
- *
+ * <p>
  * El bloqueo se toma siempre solo y se suelta antes de cualquier espera. En ningún momento se espera
  * por un recurso operativo, una entrada del usuario o una red mientras se sostiene. Por eso nunca
  * puede aparecer un ciclo de esperas entre inventario y cualquier otra parte del sistema.
@@ -45,25 +44,39 @@ public class InventoryService {
     private final CatalogService catalog;
     private final List<StockAvailabilityListener> listeners = new ArrayList<>();
 
-    /** Existencias por producto. Solo este servicio las modifica. */
+    /**
+     * Existencias por producto. Solo este servicio las modifica.
+     */
     private final Map<String, InventoryItem> items = new LinkedHashMap<>();
 
-    /** Recepciones consolidadas por producto; alimenta el número de orden de cada lote. */
+    /**
+     * Recepciones consolidadas por producto; alimenta el número de orden de cada lote.
+     */
     private final Map<String, Long> receiptsByProduct = new LinkedHashMap<>();
 
-    /** Mensajes ya aplicados y sus pendientes; el identificador impide altas duplicadas. */
+    /**
+     * Mensajes ya aplicados y sus pendientes; el identificador impide altas duplicadas.
+     */
     private final Map<String, ReceiptPlacement> receipts = new LinkedHashMap<>();
 
-    /** Reserva activa por pedido, para que una reserva sea idempotente y no se duplique mercancía. */
+    /**
+     * Reserva activa por pedido, para que una reserva sea idempotente y no se duplique mercancía.
+     */
     private final Map<String, StockReservation> reservationsByOrder = new LinkedHashMap<>();
 
-    /** Retiros por pedido, para poder devolver exactamente las mismas unidades si el pedido falla. */
+    /**
+     * Retiros por pedido, para poder devolver exactamente las mismas unidades si el pedido falla.
+     */
     private final Map<String, StockIssue> issuesByOrder = new LinkedHashMap<>();
 
-    /** Pedidos ya recuperados, para que devolver mercancía dos veces no duplique existencias. */
+    /**
+     * Pedidos ya recuperados, para que devolver mercancía dos veces no duplique existencias.
+     */
     private final Set<String> recoveredOrders = new HashSet<>();
 
-    /** Instantánea inmutable para lectores que no pueden tomar bloqueos. */
+    /**
+     * Instantánea inmutable para lectores que no pueden tomar bloqueos.
+     */
     private volatile InventorySnapshot published;
     private long revision;
 
@@ -83,26 +96,28 @@ public class InventoryService {
                 published.totalStock());
     }
 
-    /** Registra a quién avisar cuando cambia la disponibilidad de existencias. */
+    /**
+     * Registra a quién avisar cuando cambia la disponibilidad de existencias.
+     */
     public void addListener(StockAvailabilityListener listener) {
         listeners.add(listener);
     }
 
     /**
      * Reserva las líneas de un pedido de forma atómica: todo o nada.
-     *
+     * <p>
      * Sobreventa. Diez trabajadores piden el mismo producto a la vez. Si cada uno comprobara las
      * existencias y después escribiera su reserva, dos podrían leer las mismas unidades disponibles
      * antes de que ninguno escriba, y las dos reservas pasarían la comprobación: el almacén acabaría
      * por encima de sus existencias reales. Aquí la comprobación y la escritura ocurren dentro del
      * mismo bloqueo, así que ninguna otra hebra puede intercalar una reserva entre las dos.
-     *
+     * <p>
      * Reserva parcial. Si una sola línea no tiene existencias, no se toca ninguna: se devuelve vacío
      * y el pedido vuelve a la cola. Reservar unas líneas y devolver otras dejaría mercancía
      * bloqueada sin motivo, y el pedido no podría completarse nunca.
-     *
+     * <p>
      * Invariante que se sostiene: para todo producto, lo reservado nunca pasa de lo existente.
-     *
+     * <p>
      * Las unidades se toman de las ubicaciones que guardan menos producto, para vaciar primero las
      * posiciones pequeñas en lugar de dejar restos por todas partes.
      */
@@ -144,14 +159,18 @@ public class InventoryService {
         return Optional.of(reservation);
     }
 
-    /** Suma las líneas del pedido cuando el mismo producto aparece repetido. */
+    /**
+     * Suma las líneas del pedido cuando el mismo producto aparece repetido.
+     */
     private Map<String, Integer> requiredUnits(Order order) {
         Map<String, Integer> required = new LinkedHashMap<>();
         order.lines().forEach(line -> required.merge(line.productId(), line.quantity(), Integer::sum));
         return required;
     }
 
-    /** Elige de qué ubicaciones saldrán las unidades, sin modificar nada todavía. */
+    /**
+     * Elige de qué ubicaciones saldrán las unidades, sin modificar nada todavía.
+     */
     private List<StockReservation.ReservationLine> planWithdrawal(String productId, int units) {
         List<StockReservation.ReservationLine> segments = new ArrayList<>();
         int unitVolume = catalog.findById(productId).unitVolume();
@@ -180,7 +199,9 @@ public class InventoryService {
         return segments;
     }
 
-    /** Ubicaciones con menos unidades del producto primero, para consolidar y no fragmentar. */
+    /**
+     * Ubicaciones con menos unidades del producto primero, para consolidar y no fragmentar.
+     */
     private List<String> locationsLeastUnitsFirst(String productId) {
         return warehouse.unitsByProduct().getOrDefault(productId, Map.of()).keySet().stream()
                 .sorted(Comparator.comparingInt((String id) -> warehouse.unitsAt(id, productId))
@@ -188,7 +209,9 @@ public class InventoryService {
                 .toList();
     }
 
-    /** Suma lo comprometido con pedidos en curso, sin alterar el total de existencias. */
+    /**
+     * Suma lo comprometido con pedidos en curso, sin alterar el total de existencias.
+     */
     private void addReserved(String productId, int units) {
         InventoryItem item = items.get(productId);
         items.put(productId, new InventoryItem(productId, item.stock(), item.reserved() + units,
@@ -221,7 +244,7 @@ public class InventoryService {
 
     /**
      * Retira físicamente la mercancía y deja constancia de qué unidades salieron de dónde.
-     *
+     * <p>
      * El inventario baja de verdad aquí: a partir de este momento las unidades ya no están en el
      * almacén y el espacio que ocupaban queda libre. Ese espacio se reutiliza de inmediato para
      * colocar mercancía que estaba pendiente, para que una ubicación liberada no quede ociosa mientras
@@ -262,7 +285,9 @@ public class InventoryService {
         return issue;
     }
 
-    /** Trazabilidad del retiro de un pedido, si ya tomó su mercancía. */
+    /**
+     * Trazabilidad del retiro de un pedido, si ya tomó su mercancía.
+     */
     public Optional<StockIssue> findIssue(String orderId) {
         lock.lock();
         try {
@@ -274,13 +299,13 @@ public class InventoryService {
 
     /**
      * Devuelve al almacén la mercancía de un pedido que no pudo completarse.
-     *
+     * <p>
      * Esto es lo que hace recuperable un fallo. Sin el registro del retiro, un pedido que falla
      * después de tomar su carga dejaría el inventario descuadrado de forma irreversible. Aquí las
      * unidades vuelven primero a la ubicación de la que salieron, que es donde el encargado las dejó;
      * solo si ya no caben allí se recolocan en cualquier otra. Si el almacén está lleno, quedan como
      * mercancía pendiente de espacio en lugar de desaparecer.
-     *
+     * <p>
      * Devolver dos veces el mismo pedido no duplica existencias: el pedido queda marcado como
      * recuperado la primera vez.
      */
@@ -307,7 +332,7 @@ public class InventoryService {
 
     /**
      * Da de alta mercancía recibida.
-     *
+     * <p>
      * Lo que no cabe no se descarta: queda como mercancía pendiente de espacio y se reintenta cada vez
      * que un pedido libera una ubicación. Es el caso que el enunciado pide conservar en lugar de
      * perder.
@@ -353,14 +378,16 @@ public class InventoryService {
             receiptsByProduct.merge(message.productId(), 1L, Long::sum);
             publish();
             result = receipts.get(message.id());
-        } finally { lock.unlock(); }
+        } finally {
+            lock.unlock();
+        }
         notifyListeners();
         return result;
     }
 
     /**
      * Suma existencias y las coloca en cuanto haya sitio.
-     *
+     * <p>
      * Primero se cuentan como pendientes y después se descuentan las que sí encontraron
      * lugar. Así la cuenta cuadra siempre: pendientes más colocadas es exactamente lo recibido, ni
      * una unidad de más ni una de menos.
@@ -374,7 +401,7 @@ public class InventoryService {
 
     /**
      * Coloca hasta el límite indicado y descuenta lo colocado de la mercancía pendiente.
-     *
+     * <p>
      * Si se indica la ubicación de origen se intenta primero allí, que es lo que hace la recuperación
      * exacta de un pedido fallido. Lo que sobra se reparte con el criterio general de consolidación y
      * mejor ajuste; lo que sigue sin caber permanece pendiente.
@@ -414,7 +441,7 @@ public class InventoryService {
 
     /**
      * Reintenta colocar toda la mercancía pendiente de cualquier producto.
-     *
+     * <p>
      * Se llama cuando el almacén libera espacio. Puede servir para un producto distinto del que dejó
      * el hueco, porque una ubicación vacía sirve igual para cualquier mercancía. El proceso se repite
      * mientras quede avance posible y termina siempre: cada colocación exitosa descuenta pendientes,
@@ -435,7 +462,7 @@ public class InventoryService {
 
     /**
      * Publica una instantánea coherente para los lectores que no toman bloqueos.
-     *
+     * <p>
      * Los lotes se derivan del almacén físico en lugar de mantenerse por separado. Así la instantánea
      * no puede discrepar de la realidad: si una unidad salió de una ubicación, el lote publicado
      * refleja que ya no está ahí. La publicación ocurre siempre antes de liberar el bloqueo, nunca
@@ -460,17 +487,26 @@ public class InventoryService {
                 lots, warehouse.locations(), warehouse.occupiedVolume(), warehouse.availableVolume(), receipts);
     }
 
-    /** Avisa a los planificadores una vez liberado el bloqueo, para no encadenar bloqueos ajenos. */
+    /**
+     * Avisa a los planificadores una vez liberado el bloqueo, para no encadenar bloqueos ajenos.
+     */
     private void notifyListeners() {
         listeners.forEach(StockAvailabilityListener::onAvailabilityChanged);
     }
 
     /** Instantánea publicada; no toma el bloqueo y por eso no puede quedar atrapada esperando. */
+    /**
+     * Obtiene una copia inmutable del inventario.
+     * Parámetros: ninguno.
+     * Retorno: InventorySnapshot - Instantánea inmutable del estado actual.
+     */
     public InventorySnapshot snapshot() {
         return published;
     }
 
-    /** Existencias por producto, para la consulta del inventario. */
+    /**
+     * Existencias por producto, para la consulta del inventario.
+     */
     public List<InventoryReport> report() {
         return report(snapshot());
     }
@@ -487,7 +523,9 @@ public class InventoryService {
         }).toList();
     }
 
-    /** Capacidad, ocupación y distribución real de los lotes, para la consulta del almacén. */
+    /**
+     * Capacidad, ocupación y distribución real de los lotes, para la consulta del almacén.
+     */
     public WarehouseReport warehouseReport() {
         return warehouseReport(snapshot());
     }
@@ -512,31 +550,48 @@ public class InventoryService {
                 splitLots, locationViews, lots);
     }
 
-    /** Resultado de dar de alta mercancía recibida: cuánto entró y cuánto quedó sin lugar. */
-    public record ReceiptResult(String productId, int units, int placedUnits, int pendingUnits) {}
+    /**
+     * Resultado de dar de alta mercancía recibida: cuánto entró y cuánto quedó sin lugar.
+     */
+    public record ReceiptResult(String productId, int units, int placedUnits, int pendingUnits) {
+    }
 
-    /** Existencias de un producto con los datos del catálogo y su distribución. */
+    /**
+     * Existencias de un producto con los datos del catálogo y su distribución.
+     */
     public record InventoryReport(String productId, String productName, String merchandiseType,
                                   int unitVolume, int stock, int reserved, int available,
-                                  int pendingPlacement, int locations) {}
+                                  int pendingPlacement, int locations) {
+    }
 
-    /** Capacidad y ocupación del almacén, con el reparto de los lotes. */
+    /**
+     * Capacidad y ocupación del almacén, con el reparto de los lotes.
+     */
     public record WarehouseReport(int locationCount, int volumePerLocation, int occupiedVolume,
                                   int availableVolume, int locationsInUse, int splitLots,
-                                  List<Location> locations, List<LotReport> lots) {}
+                                  List<Location> locations, List<LotReport> lots) {
+    }
 
-    /** Una ubicación física y cuánto ocupa. */
+    /**
+     * Una ubicación física y cuánto ocupa.
+     */
     public record Location(String id, int capacity, int usedVolume) {
         public int availableVolume() {
             return capacity - usedVolume;
         }
     }
 
-    /** Un lote con la lista de ubicaciones donde está repartido. */
+    /**
+     * Un lote con la lista de ubicaciones donde está repartido.
+     */
     public record LotReport(String id, String productId, String productName, int units, int locationCount,
                             boolean split, int usedVolume, long receipts,
-                            List<LocationAllocationReport> allocations) {}
+                            List<LocationAllocationReport> allocations) {
+    }
 
-    /** Unidades de un lote en una ubicación concreta. */
-    public record LocationAllocationReport(String locationId, int units, int usedVolume) {}
+    /**
+     * Unidades de un lote en una ubicación concreta.
+     */
+    public record LocationAllocationReport(String locationId, int units, int usedVolume) {
+    }
 }

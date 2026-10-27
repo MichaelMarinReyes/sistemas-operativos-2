@@ -1,11 +1,14 @@
 package com.sopes.backendproyectofinal.catalog;
 
 import com.sopes.backendproyectofinal.shared.ApiException;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-/** Catálogo fijo del simulador; los nombres son textos de presentación en español. */
+import java.util.List;
+
+/**
+ * Catálogo fijo del simulador; los nombres son textos de presentación en español.
+ */
 @Service
 public class CatalogService {
     private final List<Product> products = List.of(
@@ -20,7 +23,9 @@ public class CatalogService {
             new Product("ELE-01", "Teléfono", MerchandiseType.ELECTRONICS, 1),
             new Product("ELE-02", "Computadora portátil", MerchandiseType.ELECTRONICS, 3));
 
-    public List<Product> findAll() { return products; }
+    public List<Product> findAll() {
+        return products;
+    }
 
     public Product findById(String id) {
         return products.stream().filter(product -> product.id().equals(id)).findFirst()

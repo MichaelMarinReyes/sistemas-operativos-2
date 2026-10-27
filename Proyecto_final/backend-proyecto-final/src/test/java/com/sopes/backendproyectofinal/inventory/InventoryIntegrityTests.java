@@ -2,16 +2,26 @@ package com.sopes.backendproyectofinal.inventory;
 
 import com.sopes.backendproyectofinal.catalog.CatalogService;
 import com.sopes.backendproyectofinal.catalog.MerchandiseType;
-import com.sopes.backendproyectofinal.orders.*;
+import com.sopes.backendproyectofinal.orders.Order;
+import com.sopes.backendproyectofinal.orders.OrderLine;
+import com.sopes.backendproyectofinal.orders.OrderRepository;
+import com.sopes.backendproyectofinal.orders.OrderStatus;
 import com.sopes.backendproyectofinal.shared.SimulationState;
+import org.junit.jupiter.api.Test;
+
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.*;
-import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-/** Comprueba cantidades físicas, compromisos y publicaciones, además de los contadores globales. */
+/**
+ * Comprueba cantidades físicas, compromisos y publicaciones, además de los contadores globales.
+ */
 class InventoryIntegrityTests {
     private InventoryService inventory(int units, int locations) {
         var settings = new WarehouseSettings();

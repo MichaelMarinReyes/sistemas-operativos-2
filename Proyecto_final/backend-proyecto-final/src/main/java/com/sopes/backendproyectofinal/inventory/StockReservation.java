@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * Compromiso de existencias para un pedido, con la ubicación de la que sale cada línea.
- *
+ * <p>
  * Es inmutable y se construye entero o no se construye: si una sola línea falla, no existe reserva y
  * el pedido vuelve a esperar existencias. Guardar además de qué ubicación salía cada línea es lo que
  * permite devolver exactamente las mismas unidades si el pedido falla antes de salir del almacén.
@@ -23,7 +23,9 @@ public record StockReservation(String orderId, List<ReservationLine> lines, Inst
         return lines.stream().mapToInt(ReservationLine::units).sum();
     }
 
-    /** Una línea reservada y la ubicación concreta que respalda esas unidades. */
+    /**
+     * Una línea reservada y la ubicación concreta que respalda esas unidades.
+     */
     public record ReservationLine(String productId, int units, String locationId, int unitVolume) {
         public ReservationLine {
             if (units < 1) {

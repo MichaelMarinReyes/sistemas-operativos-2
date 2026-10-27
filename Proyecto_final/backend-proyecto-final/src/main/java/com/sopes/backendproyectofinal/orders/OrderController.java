@@ -1,16 +1,19 @@
 package com.sopes.backendproyectofinal.orders;
 
 import jakarta.validation.Valid;
-import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService service;
 
-    public OrderController(OrderService service) { this.service = service; }
+    public OrderController(OrderService service) {
+        this.service = service;
+    }
 
     @PostMapping
     public ResponseEntity<Order> create(@Valid @RequestBody CreateOrderRequest request) {
@@ -26,5 +29,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public Order findById(@PathVariable String id) { return service.findById(id); }
+    public Order findById(@PathVariable String id) {
+        return service.findById(id);
+    }
 }

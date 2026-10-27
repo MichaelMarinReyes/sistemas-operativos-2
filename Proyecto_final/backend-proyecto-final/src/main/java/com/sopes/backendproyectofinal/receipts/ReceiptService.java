@@ -1,20 +1,32 @@
+/**
+ * Servicio de recepción con patrón productor-consumidor.
+ * Usa BlockingQueue y pool de hilos para procesar recepciones concurrentemente.
+ */
+
 package com.sopes.backendproyectofinal.receipts;
 
 import com.sopes.backendproyectofinal.catalog.CatalogService;
-import com.sopes.backendproyectofinal.inventory.*;
-import com.sopes.backendproyectofinal.resources.*;
+import com.sopes.backendproyectofinal.inventory.InventoryService;
+import com.sopes.backendproyectofinal.inventory.InventorySnapshot;
+import com.sopes.backendproyectofinal.inventory.StockReceipt;
+import com.sopes.backendproyectofinal.resources.ResourceManager;
+import com.sopes.backendproyectofinal.resources.ResourceType;
 import com.sopes.backendproyectofinal.shared.ApiException;
 import com.sopes.backendproyectofinal.simulation.SimulationClock;
 import jakarta.annotation.PreDestroy;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.UnaryOperator;
 
 /**
  * Dos trabajadores y dos colas acotadas separan la recepción física del alta de existencias.
@@ -55,6 +67,12 @@ public class ReceiptService {
      * La admisión espera como máximo el tiempo configurado; jamás espera espacio físico.
      * La clave identifica la operación aun cuando el cliente no recibió la confirmación HTTP.
      */
+    /**
+     * Envía una recepción al sistema.
+     * Parámetros: key (String) - Clave de idempotencia; productId (String) - Id del producto; quantity (int) - Cantidad.
+     * Retorno: ReceiptView - Vista de la recepción creada o existente.
+     * Acción: Valida, crea registro y lo coloca en cola si hay espacio disponible.
+     */
     public ReceiptView submit(String key, String productId, int quantity) {
         var product = catalog.findById(productId);
         if (quantity < 1 || quantity > 1000000) {
@@ -89,7 +107,9 @@ public class ReceiptService {
             entries.put(id, receipt);
             publish();
             return receipt;
-        } finally { lock.unlock(); }
+        } finally {
+            lock.unlock();
+        }
     }
 
     private ApiException saturated() {
@@ -97,6 +117,12 @@ public class ReceiptService {
                 "Recepción está saturada. El ingreso no fue aceptado; reintenta con la misma clave.");
     }
 
+    /**
+     * Inicia el servicio de recepción.
+     * Parámetros: ninguno.
+     * Retorno: void.
+     * Acción: Crea colas, arranca workers y hilos de procesamiento.
+     */
     public synchronized void start() {
         if (running) return;
         if (workers != null && !workers.isTerminated()) {
@@ -109,6 +135,12 @@ public class ReceiptService {
     }
 
     /** Los mensajes en curso se conservan como puntos de reanudación, además de los encolados. */
+    /**
+     * Detiene el servicio de recepción.
+     * Parámetros: ninguno.
+     * Retorno: void.
+     * Acción: Detiene hilos, limpia colas y libera recursos.
+     */
     public synchronized void stop() {
         running = false;
         if (workers == null) return;
@@ -181,10 +213,14 @@ public class ReceiptService {
         try {
             entries.put(id, operation.apply(entries.get(id)));
             publish();
-        } finally { lock.unlock(); }
+        } finally {
+            lock.unlock();
+        }
     }
 
-    private void publish() { published = List.copyOf(entries.values()); }
+    private void publish() {
+        published = List.copyOf(entries.values());
+    }
 
     public ReceiptView find(String id) {
         // La admisión puede haber ofrecido el mensaje antes de publicar su ficha.
@@ -193,7 +229,9 @@ public class ReceiptService {
             ReceiptView entry = entries.get(id);
             if (entry == null) throw new ApiException(HttpStatus.NOT_FOUND, "La recepción no existe.");
             return enrich(entry, inventory.snapshot());
-        } finally { lock.unlock(); }
+        } finally {
+            lock.unlock();
+        }
     }
 
     private ReceiptView enrich(ReceiptView entry, InventorySnapshot snapshot) {
@@ -205,6 +243,11 @@ public class ReceiptService {
     }
 
     /** Lectura sin bloqueos de recepción ni de inventario; adecuada para SSE bajo el bloqueo de estado. */
+    /**
+     * Genera reporte del estado de recepciones.
+     * Parámetros: ninguno.
+     * Retorno: ReceiptReport - Estadísticas y listado de recepciones.
+     */
     public ReceiptReport report() {
         var entriesSnapshot = published;
         var stock = inventory.snapshot();
@@ -220,7 +263,9 @@ public class ReceiptService {
     }
 
     @PreDestroy
-    public void close() { stop(); }
+    public void close() {
+        stop();
+    }
 
     public record ReceiptView(String id, String productId, String productName, int quantity,
                               ReceiptStatus status, int placedUnits, int pendingUnits,
@@ -233,5 +278,6 @@ public class ReceiptService {
 
     public record ReceiptReport(boolean running, int incomingQueueSize, int inventoryQueueSize,
                                 int queueCapacity, int maxOutstanding, int total, int outstanding,
-                                int completed, int failed, int waitingSpace, List<ReceiptView> items) {}
+                                int completed, int failed, int waitingSpace, List<ReceiptView> items) {
+    }
 }

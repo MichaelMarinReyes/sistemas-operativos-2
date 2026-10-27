@@ -10,7 +10,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class StatusEventController {
     private final StatusEventService events;
 
-    public StatusEventController(StatusEventService events) { this.events = events; }
+    public StatusEventController(StatusEventService events) {
+        this.events = events;
+    }
 
     @GetMapping(value = "/api/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(HttpServletResponse response) {

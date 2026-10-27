@@ -9,8 +9,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatusController {
     private final StatusService service;
 
-    public StatusController(StatusService service) { this.service = service; }
+    public StatusController(StatusService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    public StatusResponse getStatus() { return service.getStatus(); }
+    public StatusResponse getStatus() {
+        return service.getStatus();
+    }
 }

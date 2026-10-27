@@ -2,7 +2,9 @@ package com.sopes.backendproyectofinal.shared;
 
 import org.springframework.http.HttpStatus;
 
-/** Error de negocio con un mensaje seguro para mostrar al usuario. */
+/**
+ * Error de negocio con un mensaje seguro para mostrar al usuario.
+ */
 public class ApiException extends RuntimeException {
     private final HttpStatus status;
 

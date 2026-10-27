@@ -1,13 +1,14 @@
 package com.sopes.backendproyectofinal.resources;
 
 import com.sopes.backendproyectofinal.shared.SimulationState;
+import org.junit.jupiter.api.Test;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.Test;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,7 +27,9 @@ class ResourceManagerTests {
             var blocked = executor.submit(() -> {
                 try (var lease = manager.acquire("waiting", Map.of(ResourceType.WORKER, 1, ResourceType.PACKING, 1))) {
                     fail("El séptimo pedido no debe adquirir empaque.");
-                } catch (InterruptedException exception) { interrupted.countDown(); }
+                } catch (InterruptedException exception) {
+                    interrupted.countDown();
+                }
             });
             await().atMost(2, TimeUnit.SECONDS).until(() -> manager.pendingRequests().size() == 1);
             assertEquals(6, manager.snapshot().stream().filter(resource -> resource.type() == ResourceType.WORKER).findFirst().orElseThrow().inUse());
@@ -59,7 +62,10 @@ class ResourceManagerTests {
             assertFalse(second.isDone());
             first.close();
             assertEquals("dispatch", second.get(2, TimeUnit.SECONDS));
-        } finally { first.close(); executor.shutdownNow(); }
+        } finally {
+            first.close();
+            executor.shutdownNow();
+        }
         assertTrue(manager.snapshot().stream().allMatch(resource -> resource.inUse() == 0));
     }
 
